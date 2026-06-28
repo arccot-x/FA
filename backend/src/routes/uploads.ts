@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { uploadBuffer } from "../services/storage";
 import { asyncHandler } from "../utils/asyncHandler";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const uploadsRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -24,6 +25,7 @@ uploadsRouter.post(
   "/transaction/:userId",
   singleFileUpload,
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     if (!req.file) {
       throw new Error("A file field named 'file' is required.");
     }
@@ -82,6 +84,7 @@ uploadsRouter.post(
   "/vault/:userId",
   singleFileUpload,
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     if (!req.file) {
       throw new Error("A file field named 'file' is required.");
     }

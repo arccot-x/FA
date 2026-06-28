@@ -5,12 +5,14 @@ import { prisma } from "../lib/prisma";
 import { getBillsForMonth } from "../services/bills";
 import { asyncHandler } from "../utils/asyncHandler";
 import { dueDateFor, parseMonth } from "../utils/month";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const billsRouter = Router();
 
 billsRouter.get(
   "/:userId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const cycleMonth = parseMonth(String(req.query.month ?? ""));
     res.json(await getBillsForMonth(req.params.userId, cycleMonth));
   })
@@ -29,6 +31,7 @@ const templateSchema = z.object({
 billsRouter.post(
   "/:userId/templates",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = templateSchema.parse(req.body);
     const template = await prisma.billTemplate.create({
       data: { ...input, userId: req.params.userId }
@@ -41,6 +44,7 @@ billsRouter.post(
 billsRouter.patch(
   "/:userId/templates/:templateId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = templateSchema.partial().extend({ active: z.boolean().optional() }).parse(req.body);
     const template = await prisma.billTemplate.update({
       where: { id: req.params.templateId, userId: req.params.userId },
@@ -60,6 +64,7 @@ const occurrenceSchema = z.object({
 billsRouter.patch(
   "/:userId/occurrences/:occurrenceId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = occurrenceSchema.parse(req.body);
     const occurrence = await prisma.billOccurrence.update({
       where: { id: req.params.occurrenceId, userId: req.params.userId },
@@ -82,6 +87,7 @@ const ensureOccurrenceSchema = z.object({
 billsRouter.post(
   "/:userId/templates/:templateId/occurrences",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = ensureOccurrenceSchema.parse(req.body);
     const template = await prisma.billTemplate.findUniqueOrThrow({
       where: { id: req.params.templateId, userId: req.params.userId }
@@ -111,4 +117,3 @@ billsRouter.post(
     res.status(201).json(occurrence);
   })
 );
-

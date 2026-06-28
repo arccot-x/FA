@@ -3,12 +3,14 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const transactionsRouter = Router();
 
 transactionsRouter.get(
   "/:userId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const transactions = await prisma.transaction.findMany({
       where: { userId: req.params.userId },
       include: { attachments: true },
@@ -34,6 +36,7 @@ const transactionSchema = z.object({
 transactionsRouter.post(
   "/:userId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = transactionSchema.parse(req.body);
     const transaction = await prisma.transaction.create({
       data: { ...input, userId: req.params.userId },
@@ -47,6 +50,7 @@ transactionsRouter.post(
 transactionsRouter.patch(
   "/:userId/:transactionId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = transactionSchema.partial().parse(req.body);
     const transaction = await prisma.transaction.update({
       where: { id: req.params.transactionId, userId: req.params.userId },
@@ -57,4 +61,3 @@ transactionsRouter.patch(
     res.json(transaction);
   })
 );
-

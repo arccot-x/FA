@@ -10,5 +10,7 @@ coverage/
 .logs/
 *.sqlite
 *.db
+*.apk
+*.aab
 android/
 ios/

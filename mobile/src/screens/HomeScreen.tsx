@@ -27,7 +27,8 @@ export function HomeScreen() {
     addManualExpense,
     saveIncomeSettings,
     saveExpectedIncome,
-    completePendingExpense
+    completePendingExpense,
+    logout
   } = useFinanceStore();
 
   useFocusEffect(
@@ -128,6 +129,7 @@ export function HomeScreen() {
         onClose={() => setIncomeOpen(false)}
         onSaveSettings={saveIncomeSettings}
         onSaveExpected={saveExpectedIncome}
+        onLogout={logout}
       />
 
       <PendingExpenseModal
@@ -154,9 +156,10 @@ type IncomeModalProps = {
   onClose: () => void;
   onSaveSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
   onSaveExpected: (expected: number) => Promise<void>;
+  onLogout: () => Promise<void>;
 };
 
-function IncomeModal({ visible, userIncome, currentExpected, paydayDay, variableIncomeEnabled, onClose, onSaveSettings, onSaveExpected }: IncomeModalProps) {
+function IncomeModal({ visible, userIncome, currentExpected, paydayDay, variableIncomeEnabled, onClose, onSaveSettings, onSaveExpected, onLogout }: IncomeModalProps) {
   const [income, setIncome] = useState(String(userIncome || 4200));
   const [expected, setExpected] = useState(String(currentExpected || userIncome || 4200));
   const [payday, setPayday] = useState(String(paydayDay || 1));
@@ -195,6 +198,16 @@ function IncomeModal({ visible, userIncome, currentExpected, paydayDay, variable
         <TextInput keyboardType="decimal-pad" value={expected} onChangeText={setExpected} style={styles.input} />
         <TouchableOpacity style={styles.primaryButton} onPress={save}>
           <Text style={styles.primaryButtonText}>Save Income</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={async () => {
+            onClose();
+            await onLogout();
+          }}
+        >
+          <MaterialCommunityIcons color={colors.danger} name="logout" size={20} />
+          <Text style={styles.secondaryButtonText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </Modal>
@@ -457,6 +470,22 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
+    fontWeight: "900"
+  },
+  secondaryButton: {
+    alignItems: "center",
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "center",
+    marginTop: spacing.md,
+    minHeight: 52
+  },
+  secondaryButtonText: {
+    color: colors.danger,
+    fontSize: 15,
     fontWeight: "900"
   }
 });

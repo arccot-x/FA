@@ -16,6 +16,10 @@
         "READ_EXTERNAL_STORAGE"
       ]
     },
+    "androidNavigationBar": {
+      "backgroundColor": "#F7F8FA",
+      "barStyle": "dark-content"
+    },
     "plugins": [
       [
         "expo-camera",
@@ -28,7 +32,8 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "apiUrl": "http://10.0.2.2:4000/api"

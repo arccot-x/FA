@@ -3,7 +3,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import * as NavigationBar from "expo-navigation-bar";
 import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
+import { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { HomeScreen } from "./src/screens/HomeScreen";
@@ -11,6 +15,8 @@ import { BillCenterScreen } from "./src/screens/BillCenterScreen";
 import { VaultScreen } from "./src/screens/VaultScreen";
 import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { CameraScreen } from "./src/screens/CameraScreen";
+import { AuthScreen } from "./src/screens/AuthScreen";
+import { useFinanceStore } from "./src/store/useFinanceStore";
 import { colors } from "./src/theme";
 
 export type RootStackParamList = {
@@ -64,18 +70,57 @@ function MainTabs() {
 }
 
 export default function App() {
+  const { authReady, restoreSession, user } = useFinanceStore();
+
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
+
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(colors.background);
+    void NavigationBar.setBackgroundColorAsync(colors.background);
+    void NavigationBar.setButtonStyleAsync("dark");
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer>
+        <View style={styles.app}>
           <StatusBar style="dark" />
-          <Stack.Navigator>
-            <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="Camera" component={CameraScreen} options={{ title: "Snap & Save" }} />
-          </Stack.Navigator>
-        </NavigationContainer>
+          {!authReady ? (
+            <View style={styles.loading}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.loadingText}>Opening your account</Text>
+            </View>
+          ) : user ? (
+            <NavigationContainer>
+              <Stack.Navigator>
+                <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+                <Stack.Screen name="Camera" component={CameraScreen} options={{ title: "Snap & Save" }} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          ) : (
+            <AuthScreen />
+          )}
+        </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
+const styles = StyleSheet.create({
+  app: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  loading: {
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+    justifyContent: "center"
+  },
+  loadingText: {
+    color: colors.subtleText,
+    fontWeight: "800"
+  }
+});

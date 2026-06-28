@@ -4,12 +4,14 @@ import { prisma } from "../lib/prisma";
 import { getBillsForMonth } from "../services/bills";
 import { asyncHandler } from "../utils/asyncHandler";
 import { parseMonth } from "../utils/month";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const bootstrapRouter = Router();
 
 bootstrapRouter.get(
   "/:userId",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const cycleMonth = parseMonth(String(req.query.month ?? ""));
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.userId } });
     const [incomeCycle, bills, transactions, vaultDocuments] = await Promise.all([

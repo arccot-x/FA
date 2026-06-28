@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { ExpenseCategory } from "../types";
 import { colors, spacing } from "../theme";
 import { expenseCategoryOptions } from "../constants/options";
@@ -38,7 +39,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
 
   return (
     <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.iconButton} onPress={onClose}>
             <MaterialCommunityIcons color={colors.text} name="close" size={26} />
@@ -85,7 +86,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
           <MaterialCommunityIcons color="#FFFFFF" name="check" size={22} />
           <Text style={styles.saveText}>Save Expense</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -94,13 +95,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.md
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm
   },
   header: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: spacing.lg
+    marginTop: spacing.sm
   },
   title: {
     color: colors.text,
@@ -122,9 +124,9 @@ const styles = StyleSheet.create({
   },
   amount: {
     color: colors.text,
-    fontSize: 58,
+    fontSize: 48,
     fontWeight: "900",
-    marginVertical: spacing.lg,
+    marginVertical: spacing.md,
     textAlign: "center"
   },
   categoryGrid: {
@@ -140,7 +142,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexBasis: "31.8%",
     gap: spacing.xs,
-    minHeight: 76,
+    minHeight: 64,
     justifyContent: "center"
   },
   categorySelected: {
@@ -161,13 +163,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm,
     justifyContent: "center",
-    marginTop: spacing.lg
+    marginTop: spacing.md,
+    minHeight: 224
   },
   key: {
     alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: 8,
-    height: 66,
+    height: 52,
     justifyContent: "center",
     width: "30%"
   },
@@ -183,6 +186,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
+    marginTop: spacing.sm,
     minHeight: 56
   },
   saveText: {

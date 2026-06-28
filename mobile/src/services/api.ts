@@ -2,21 +2,59 @@ import { API_URL, DEMO_USER_EMAIL } from "../config";
 import type { BootstrapPayload, ExpenseCategory, Transaction, User, VaultCategory, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
+let authToken: string | undefined;
+
+export function setAuthToken(token?: string) {
+  authToken = token;
+}
+
+type AuthPayload = {
+  user: User;
+  token: string;
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...(init?.headers ?? {})
     }
   });
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(body || `Request failed: ${response.status}`);
+    try {
+      const parsed = JSON.parse(body) as { error?: string };
+      throw new Error(parsed.error || `Request failed: ${response.status}`);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(body || `Request failed: ${response.status}`);
+      }
+      throw error;
+    }
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function registerAccount(input: { name: string; email: string; password: string }) {
+  return request<AuthPayload>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function loginAccount(input: { email: string; password: string }) {
+  return request<AuthPayload>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function getCurrentAccount() {
+  return request<{ user: User }>("/auth/me");
 }
 
 export async function getDemoUser() {
@@ -138,6 +176,7 @@ export async function updateBill(userId: string, occurrenceId: string, input: { 
 async function uploadForm<T>(path: string, form: FormData): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     method: "POST",
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
     body: form
   });
 

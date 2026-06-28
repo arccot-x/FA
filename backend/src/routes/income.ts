@@ -4,12 +4,14 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { parseMonth } from "../utils/month";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const incomeRouter = Router();
 
 incomeRouter.get(
   "/:userId/current",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const cycleMonth = parseMonth(String(req.query.month ?? ""));
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.userId } });
 
@@ -42,6 +44,7 @@ const settingsSchema = z.object({
 incomeRouter.put(
   "/:userId/settings",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = settingsSchema.parse(req.body);
     const user = await prisma.user.update({
       where: { id: req.params.userId },
@@ -63,6 +66,7 @@ const cycleSchema = z.object({
 incomeRouter.post(
   "/:userId/cycles",
   asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
     const input = cycleSchema.parse(req.body);
     const cycleMonth = parseMonth(input.month);
     const cycle = await prisma.incomeCycle.upsert({
@@ -91,4 +95,3 @@ incomeRouter.post(
     res.status(201).json(cycle);
   })
 );
-
