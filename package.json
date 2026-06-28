@@ -1,0 +1,21 @@
+{
+  "name": "frictionless-finance-app",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "mobile"
+  ],
+  "scripts": {
+    "backend:dev": "npm --workspace backend run dev",
+    "backend:build": "npm --workspace backend run build",
+    "mobile:start": "npm --workspace mobile run start",
+    "mobile:android": "npm --workspace mobile run android",
+    "typecheck": "npm --workspace backend run typecheck && npm --workspace mobile run typecheck"
+  },
+  "overrides": {
+    "@types/multer": {
+      "@types/express": "4.17.25"
+    }
+  }
+}
