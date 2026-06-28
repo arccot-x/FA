@@ -10,6 +10,10 @@ app.use(cors({ origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN }));
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
 
+app.get("/", (_req, res) => {
+  res.json({ ok: true, service: "frictionless-finance-api" });
+});
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
@@ -20,4 +24,3 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   const message = error instanceof Error ? error.message : "Unexpected server error";
   res.status(message.includes("not found") ? 404 : 400).json({ error: message });
 });
-
