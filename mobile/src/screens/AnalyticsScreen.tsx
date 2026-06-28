@@ -20,21 +20,28 @@ export function AnalyticsScreen() {
   );
 
   const analytics = useMemo(() => {
+    const now = new Date();
     const income = toNumber(incomeCycle?.expected) || 4200;
-    const expenses = transactions
-      .filter((item) => item.status === "CLEARED")
-      .reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const cleared = transactions.filter((item) => item.status === "CLEARED");
+    const currentMonthTransactions = cleared.filter((item) => {
+      const date = new Date(item.occurredAt);
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    });
+    const previousMonthTransactions = cleared.filter((item) => {
+      const date = new Date(item.occurredAt);
+      const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return date.getMonth() === previous.getMonth() && date.getFullYear() === previous.getFullYear();
+    });
+    const expenses = currentMonthTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
     const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    const groceries = transactions
+    const groceries = currentMonthTransactions
       .filter((item) => item.category === "GROCERIES")
       .reduce((sum, item) => sum + toNumber(item.amount), 0);
-    const lastMonthGroceries = Math.max(0, groceries + 40);
+    const lastMonthGroceries = previousMonthTransactions
+      .filter((item) => item.category === "GROCERIES")
+      .reduce((sum, item) => sum + toNumber(item.amount), 0);
 
-    const categories = transactions.reduce<Record<string, number>>((acc, item) => {
-      if (item.status !== "CLEARED") {
-        return acc;
-      }
-
+    const categories = currentMonthTransactions.reduce<Record<string, number>>((acc, item) => {
       const key = item.category ?? "OTHER";
       acc[key] = (acc[key] ?? 0) + toNumber(item.amount);
       return acc;
@@ -53,9 +60,11 @@ export function AnalyticsScreen() {
 
   const delta = analytics.lastMonthGroceries - analytics.groceries;
   const comparison =
-    delta >= 0
-      ? `You spent ${formatMoney(analytics.groceries)} on groceries. This is ${formatMoney(delta)} less than this time last month.`
-      : `You spent ${formatMoney(analytics.groceries)} on groceries. This is ${formatMoney(Math.abs(delta))} more than this time last month.`;
+    analytics.lastMonthGroceries === 0
+      ? `You spent ${formatMoney(analytics.groceries)} on groceries this month. Add more history to unlock stronger comparisons.`
+      : delta >= 0
+        ? `You spent ${formatMoney(analytics.groceries)} on groceries. This is ${formatMoney(delta)} less than last month.`
+        : `You spent ${formatMoney(analytics.groceries)} on groceries. This is ${formatMoney(Math.abs(delta))} more than last month.`;
 
   return (
     <Screen title="Analytics" subtitle="Month-over-month context">
@@ -173,4 +182,3 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs
   }
 });
-

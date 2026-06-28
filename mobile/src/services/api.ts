@@ -1,5 +1,5 @@
 import { API_URL, DEMO_USER_EMAIL } from "../config";
-import type { BootstrapPayload, ExpenseCategory, VaultCategory } from "../types";
+import type { BootstrapPayload, ExpenseCategory, Transaction, User, VaultCategory, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -58,6 +58,76 @@ export async function addTransaction(input: {
   });
 }
 
+export async function updateTransaction(input: {
+  userId: string;
+  transactionId: string;
+  amount?: number;
+  category?: ExpenseCategory;
+  merchant?: string;
+  notes?: string;
+  status?: "CLEARED" | "PENDING_DETAILS";
+}) {
+  return request<Transaction>(`/transactions/${input.userId}/${input.transactionId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      amount: input.amount,
+      category: input.category,
+      merchant: input.merchant,
+      notes: input.notes,
+      status: input.status
+    })
+  });
+}
+
+export async function updateIncomeSettings(input: {
+  userId: string;
+  defaultMonthlyIncome: number;
+  paydayDay: number;
+  variableIncomeEnabled: boolean;
+}) {
+  return request<User>(`/income/${input.userId}/settings`, {
+    method: "PUT",
+    body: JSON.stringify({
+      defaultMonthlyIncome: input.defaultMonthlyIncome,
+      paydayDay: input.paydayDay,
+      variableIncomeEnabled: input.variableIncomeEnabled
+    })
+  });
+}
+
+export async function saveIncomeCycle(input: { userId: string; month: string; expected: number }) {
+  return request(`/income/${input.userId}/cycles`, {
+    method: "POST",
+    body: JSON.stringify({
+      month: input.month,
+      expected: input.expected,
+      sourceType: "VARIABLE_EXPECTED"
+    })
+  });
+}
+
+export async function addBillTemplate(input: {
+  userId: string;
+  name: string;
+  defaultAmount: number;
+  dueDay: number;
+  category: ExpenseCategory;
+  icon: string;
+  autopay?: boolean;
+}) {
+  return request(`/bills/${input.userId}/templates`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      defaultAmount: input.defaultAmount,
+      dueDay: input.dueDay,
+      category: input.category,
+      icon: input.icon,
+      autopay: input.autopay ?? false
+    })
+  });
+}
+
 export async function updateBill(userId: string, occurrenceId: string, input: { amount?: number; status?: "PAID" | "UNPAID" }) {
   return request(`/bills/${userId}/occurrences/${occurrenceId}`, {
     method: "PATCH",
@@ -108,6 +178,5 @@ export async function uploadVaultDocument(params: {
     type: params.mimeType ?? "application/octet-stream"
   } as unknown as Blob);
 
-  return uploadForm(`/uploads/vault/${params.userId}`, form);
+  return uploadForm<{ document: VaultDocument }>(`/uploads/vault/${params.userId}`, form);
 }
-

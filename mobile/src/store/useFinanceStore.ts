@@ -15,9 +15,14 @@ type FinanceState = {
   offline: boolean;
   load: () => Promise<void>;
   addManualExpense: (amount: number, category: ExpenseCategory) => Promise<void>;
+  saveIncomeSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
+  saveExpectedIncome: (expected: number) => Promise<void>;
+  addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean }) => Promise<void>;
   markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
   editBillAmount: (bill: BillOccurrence, amount: number) => Promise<void>;
+  completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
   recordSnap: (uri: string) => Promise<void>;
+  addVaultDocument: (input: { uri: string; name: string; mimeType?: string; title: string; category: import("../types").VaultCategory }) => Promise<void>;
   refreshVault: () => Promise<void>;
 };
 
@@ -139,6 +144,76 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }
   },
 
+  saveIncomeSettings: async (input) => {
+    const user = get().user ?? fallbackUser;
+    const currentCycle = get().incomeCycle;
+    set({
+      user: {
+        ...user,
+        defaultMonthlyIncome: input.defaultMonthlyIncome,
+        paydayDay: input.paydayDay,
+        variableIncomeEnabled: input.variableIncomeEnabled
+      },
+      incomeCycle: currentCycle
+        ? { ...currentCycle, expected: input.defaultMonthlyIncome }
+        : { id: "local-income", expected: input.defaultMonthlyIncome, cycleMonth: new Date().toISOString() }
+    });
+
+    if (!get().offline) {
+      await api.updateIncomeSettings({ userId: user.id, ...input });
+      await get().load();
+    }
+  },
+
+  saveExpectedIncome: async (expected) => {
+    const user = get().user ?? fallbackUser;
+    const currentCycle = get().incomeCycle;
+    set({
+      incomeCycle: currentCycle
+        ? { ...currentCycle, expected }
+        : { id: "local-income", expected, cycleMonth: new Date().toISOString() }
+    });
+
+    if (!get().offline) {
+      await api.saveIncomeCycle({ userId: user.id, month: currentMonthKey(), expected });
+      await get().load();
+    }
+  },
+
+  addBill: async (input) => {
+    const user = get().user ?? fallbackUser;
+    if (!get().offline) {
+      await api.addBillTemplate({ userId: user.id, ...input });
+      await get().load();
+      return;
+    }
+
+    const dueDate = new Date(new Date().getFullYear(), new Date().getMonth(), input.dueDay).toISOString();
+    const localBill: BillOccurrence = {
+      id: `local-bill-${Date.now()}`,
+      amount: input.defaultAmount,
+      dueDate,
+      status: "UNPAID",
+      billTemplate: {
+        id: `local-template-${Date.now()}`,
+        name: input.name,
+        category: input.category,
+        icon: input.icon,
+        autopay: input.autopay ?? false
+      }
+    };
+
+    set({
+      bills: {
+        ...get().bills,
+        unpaid: [
+          ...get().bills.unpaid,
+          localBill
+        ].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      }
+    });
+  },
+
   markBill: async (bill, status) => {
     const user = get().user ?? fallbackUser;
     const withoutBill = {
@@ -168,6 +243,35 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }
   },
 
+  completePendingExpense: async (transaction, input) => {
+    const user = get().user ?? fallbackUser;
+    const replace = (item: Transaction) =>
+      item.id === transaction.id
+        ? {
+            ...item,
+            amount: input.amount,
+            category: input.category,
+            merchant: input.merchant,
+            notes: input.notes,
+            status: "CLEARED" as const
+          }
+        : item;
+
+    set({ transactions: get().transactions.map(replace) });
+    if (!get().offline) {
+      await api.updateTransaction({
+        userId: user.id,
+        transactionId: transaction.id,
+        amount: input.amount,
+        category: input.category,
+        merchant: input.merchant,
+        notes: input.notes,
+        status: "CLEARED"
+      });
+      await get().load();
+    }
+  },
+
   recordSnap: async (uri) => {
     const user = get().user ?? fallbackUser;
     const optimistic: Transaction = {
@@ -188,8 +292,26 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }
   },
 
+  addVaultDocument: async (input) => {
+    const user = get().user ?? fallbackUser;
+    const optimistic = {
+      id: `local-vault-${Date.now()}`,
+      title: input.title,
+      category: input.category,
+      fileName: input.name,
+      mimeType: input.mimeType ?? "application/octet-stream",
+      url: input.uri,
+      createdAt: new Date().toISOString()
+    };
+
+    set({ vaultDocuments: [optimistic, ...get().vaultDocuments] });
+    if (!get().offline) {
+      await api.uploadVaultDocument({ userId: user.id, ...input });
+      await get().load();
+    }
+  },
+
   refreshVault: async () => {
     await get().load();
   }
 }));
-

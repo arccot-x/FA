@@ -3,15 +3,7 @@ import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { ExpenseCategory } from "../types";
 import { colors, spacing } from "../theme";
-
-const categories: Array<{ label: string; value: ExpenseCategory; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [
-  { label: "Groceries", value: "GROCERIES", icon: "cart" },
-  { label: "Dining", value: "DINING", icon: "silverware-fork-knife" },
-  { label: "Gas", value: "GAS", icon: "gas-station" },
-  { label: "Shopping", value: "SHOPPING", icon: "shopping" },
-  { label: "Health", value: "HEALTH", icon: "heart-pulse" },
-  { label: "Other", value: "OTHER", icon: "dots-horizontal-circle" }
-];
+import { expenseCategoryOptions } from "../constants/options";
 
 type QuickAddModalProps = {
   visible: boolean;
@@ -62,7 +54,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
         </Text>
 
         <View style={styles.categoryGrid}>
-          {categories.map((item) => {
+          {expenseCategoryOptions.slice(0, 6).map((item) => {
             const selected = item.value === category;
             return (
               <Pressable key={item.value} style={[styles.category, selected && styles.categorySelected]} onPress={() => setCategory(item.value)}>
@@ -199,4 +191,3 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   }
 });
-

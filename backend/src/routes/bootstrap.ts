@@ -1,3 +1,4 @@
+import { IncomeSourceType } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { getBillsForMonth } from "../services/bills";
@@ -10,14 +11,21 @@ bootstrapRouter.get(
   "/:userId",
   asyncHandler(async (req, res) => {
     const cycleMonth = parseMonth(String(req.query.month ?? ""));
-    const [user, incomeCycle, bills, transactions, vaultDocuments] = await Promise.all([
-      prisma.user.findUniqueOrThrow({ where: { id: req.params.userId } }),
-      prisma.incomeCycle.findUnique({
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.userId } });
+    const [incomeCycle, bills, transactions, vaultDocuments] = await Promise.all([
+      prisma.incomeCycle.upsert({
         where: {
           userId_cycleMonth: {
             userId: req.params.userId,
             cycleMonth
           }
+        },
+        update: {},
+        create: {
+          userId: req.params.userId,
+          cycleMonth,
+          expected: user.defaultMonthlyIncome,
+          sourceType: user.variableIncomeEnabled ? IncomeSourceType.VARIABLE_EXPECTED : IncomeSourceType.DEFAULT
         }
       }),
       getBillsForMonth(req.params.userId, cycleMonth),
@@ -37,4 +45,3 @@ bootstrapRouter.get(
     res.json({ user, incomeCycle, bills, transactions, vaultDocuments });
   })
 );
-
