@@ -65,7 +65,9 @@ export const en = {
     received: "Mark as received",
     receivedHint: "Track money that has actually landed.",
     save: "Save income",
-    presets: "Quick amounts"
+    presets: "Quick amounts",
+    receivedBadge: "Received",
+    expectedBadge: "Expected"
   },
   quickAdd: {
     title: "Quick add",
@@ -194,6 +196,64 @@ export const en = {
   camera: {
     needAccess: "Camera access is needed for receipts",
     allow: "Allow camera"
+  },
+  activity: {
+    title: "All activity",
+    search: "Search transactions",
+    seeAll: "See all",
+    none: "No matching transactions."
+  },
+  trends: {
+    title: "Spending trend",
+    empty: "Not enough history yet — keep logging expenses."
+  },
+  goals: {
+    title: "Savings goals",
+    subtitle: "Track progress toward a target",
+    empty: "Add a goal to start saving toward something.",
+    add: "Add goal",
+    editTitle: "Savings goal",
+    name: "Goal name",
+    namePlaceholder: "Emergency fund, Vacation",
+    target: "Target amount",
+    saved: "Saved so far",
+    reached: "Reached",
+    remaining: "{amount} to go",
+    delete: "Delete goal",
+    deleteTitle: "Delete goal?"
+  },
+  security: {
+    title: "Security",
+    appLock: "App lock",
+    appLockHint: "Require Face ID / fingerprint to open the app.",
+    unlockTitle: "Locked",
+    unlockSubtitle: "Unlock to view your finances.",
+    unlockCta: "Unlock",
+    unavailable: "Biometric lock isn't available on this device."
+  },
+  dataExport: {
+    title: "Data",
+    hint: "Save your transactions as a CSV file.",
+    button: "Export CSV",
+    nothing: "No transactions to export."
+  },
+  onboarding: {
+    welcome: "Welcome",
+    subtitle: "A couple of quick settings to personalise your money.",
+    incomeStep: "What's your monthly income?",
+    paydayStep: "Which day are you usually paid?",
+    next: "Continue",
+    start: "Get started"
+  },
+  account: {
+    changePassword: "Change password",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    passwordChanged: "Password updated.",
+    deleteAccount: "Delete account",
+    deleteTitle: "Delete account?",
+    deleteMessage: "This permanently deletes your account and all of its data. This cannot be undone.",
+    deleteConfirm: "Delete everything"
   }
 };
 

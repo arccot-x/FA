@@ -145,15 +145,27 @@ export async function updateIncomeSettings(input: {
   });
 }
 
-export async function saveIncomeCycle(input: { userId: string; month: string; expected: number }) {
+export async function saveIncomeCycle(input: { userId: string; month: string; expected: number; actual?: number }) {
   return request(`/income/${input.userId}/cycles`, {
     method: "POST",
     body: JSON.stringify({
       month: input.month,
       expected: input.expected,
+      actual: input.actual,
       sourceType: "VARIABLE_EXPECTED"
     })
   });
+}
+
+export async function changePassword(input: { userId: string; currentPassword: string; newPassword: string }) {
+  return request<{ ok: boolean }>("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function deleteAccount(input: { userId: string }) {
+  await request<void>(`/users/${input.userId}`, { method: "DELETE" });
 }
 
 export async function addBillTemplate(input: {

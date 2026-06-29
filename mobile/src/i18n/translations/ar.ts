@@ -67,7 +67,9 @@ export const ar: Translations = {
     received: "وضع علامة كمستلَم",
     receivedHint: "تتبّع الأموال التي وصلت فعلاً.",
     save: "حفظ الدخل",
-    presets: "مبالغ سريعة"
+    presets: "مبالغ سريعة",
+    receivedBadge: "مستلَم",
+    expectedBadge: "متوقع"
   },
   quickAdd: {
     title: "إضافة سريعة",
@@ -196,5 +198,63 @@ export const ar: Translations = {
   camera: {
     needAccess: "الوصول إلى الكاميرا مطلوب للإيصالات",
     allow: "السماح للكاميرا"
+  },
+  activity: {
+    title: "كل الحركات",
+    search: "ابحث في المصروفات",
+    seeAll: "عرض الكل",
+    none: "لا توجد مصروفات مطابقة."
+  },
+  trends: {
+    title: "اتجاه الإنفاق",
+    empty: "لا يوجد سجل كافٍ بعد — استمر بتسجيل المصروفات."
+  },
+  goals: {
+    title: "أهداف الادخار",
+    subtitle: "تتبّع تقدمك نحو هدف",
+    empty: "أضف هدفاً لتبدأ الادخار من أجله.",
+    add: "إضافة هدف",
+    editTitle: "هدف ادخار",
+    name: "اسم الهدف",
+    namePlaceholder: "صندوق الطوارئ، إجازة",
+    target: "المبلغ المستهدف",
+    saved: "المدّخر حتى الآن",
+    reached: "تحقق",
+    remaining: "متبقٍ {amount}",
+    delete: "حذف الهدف",
+    deleteTitle: "حذف الهدف؟"
+  },
+  security: {
+    title: "الأمان",
+    appLock: "قفل التطبيق",
+    appLockHint: "اطلب بصمة الوجه / الإصبع لفتح التطبيق.",
+    unlockTitle: "مقفل",
+    unlockSubtitle: "افتح القفل لعرض أموالك.",
+    unlockCta: "فتح القفل",
+    unavailable: "القفل البيومتري غير متاح على هذا الجهاز."
+  },
+  dataExport: {
+    title: "البيانات",
+    hint: "احفظ مصروفاتك كملف CSV.",
+    button: "تصدير CSV",
+    nothing: "لا توجد مصروفات للتصدير."
+  },
+  onboarding: {
+    welcome: "أهلاً بك",
+    subtitle: "إعدادات سريعة لتخصيص أموالك.",
+    incomeStep: "ما هو دخلك الشهري؟",
+    paydayStep: "في أي يوم تتقاضى راتبك عادةً؟",
+    next: "متابعة",
+    start: "ابدأ"
+  },
+  account: {
+    changePassword: "تغيير كلمة المرور",
+    currentPassword: "كلمة المرور الحالية",
+    newPassword: "كلمة المرور الجديدة",
+    passwordChanged: "تم تحديث كلمة المرور.",
+    deleteAccount: "حذف الحساب",
+    deleteTitle: "حذف الحساب؟",
+    deleteMessage: "يحذف هذا حسابك وكل بياناته نهائياً. لا يمكن التراجع.",
+    deleteConfirm: "احذف كل شيء"
   }
 };

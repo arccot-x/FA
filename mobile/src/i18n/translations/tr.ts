@@ -67,7 +67,9 @@ export const tr: Translations = {
     received: "Alındı olarak işaretle",
     receivedHint: "Hesabına gerçekten geçen parayı takip et.",
     save: "Geliri kaydet",
-    presets: "Hızlı tutarlar"
+    presets: "Hızlı tutarlar",
+    receivedBadge: "Alındı",
+    expectedBadge: "Beklenen"
   },
   quickAdd: {
     title: "Hızlı ekle",
@@ -196,5 +198,63 @@ export const tr: Translations = {
   camera: {
     needAccess: "Fişler için kamera erişimi gerekli",
     allow: "Kameraya izin ver"
+  },
+  activity: {
+    title: "Tüm hareketler",
+    search: "Harcama ara",
+    seeAll: "Tümünü gör",
+    none: "Eşleşen harcama yok."
+  },
+  trends: {
+    title: "Harcama eğilimi",
+    empty: "Henüz yeterli geçmiş yok — harcama eklemeye devam et."
+  },
+  goals: {
+    title: "Birikim hedefleri",
+    subtitle: "Bir hedefe doğru ilerlemeni takip et",
+    empty: "Bir şeye doğru birikim yapmak için hedef ekle.",
+    add: "Hedef ekle",
+    editTitle: "Birikim hedefi",
+    name: "Hedef adı",
+    namePlaceholder: "Acil fon, Tatil",
+    target: "Hedef tutar",
+    saved: "Şimdiye kadar biriken",
+    reached: "Ulaşıldı",
+    remaining: "{amount} kaldı",
+    delete: "Hedefi sil",
+    deleteTitle: "Hedef silinsin mi?"
+  },
+  security: {
+    title: "Güvenlik",
+    appLock: "Uygulama kilidi",
+    appLockHint: "Uygulamayı açmak için Face ID / parmak izi iste.",
+    unlockTitle: "Kilitli",
+    unlockSubtitle: "Finanslarını görmek için kilidi aç.",
+    unlockCta: "Kilidi aç",
+    unavailable: "Bu cihazda biyometrik kilit kullanılamıyor."
+  },
+  dataExport: {
+    title: "Veri",
+    hint: "Harcamalarını CSV dosyası olarak kaydet.",
+    button: "CSV dışa aktar",
+    nothing: "Dışa aktarılacak harcama yok."
+  },
+  onboarding: {
+    welcome: "Hoş geldin",
+    subtitle: "Paranı kişiselleştirmek için birkaç hızlı ayar.",
+    incomeStep: "Aylık gelirin nedir?",
+    paydayStep: "Genelde hangi gün maaş alıyorsun?",
+    next: "Devam",
+    start: "Başla"
+  },
+  account: {
+    changePassword: "Parolayı değiştir",
+    currentPassword: "Mevcut parola",
+    newPassword: "Yeni parola",
+    passwordChanged: "Parola güncellendi.",
+    deleteAccount: "Hesabı sil",
+    deleteTitle: "Hesap silinsin mi?",
+    deleteMessage: "Bu, hesabını ve tüm verilerini kalıcı olarak siler. Geri alınamaz.",
+    deleteConfirm: "Her şeyi sil"
   }
 };

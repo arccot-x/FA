@@ -4,11 +4,13 @@
 
 export type IncomeSummary = {
   expected: number;
+  base: number; // actual received if marked received, else expected
+  isReceived: boolean;
   spent: number;
   billsDue: number;
   committed: number; // spent + billsDue
-  available: number; // expected - committed (can be negative)
-  usedRatio: number; // committed / expected, clamped 0..1 for the ring
+  available: number; // base - committed (can be negative)
+  usedRatio: number; // committed / base, clamped 0..1 for the ring
   overBudget: boolean;
   daysToPayday: number; // whole days until next payday (>= 0)
   isPaydayToday: boolean;
@@ -43,26 +45,32 @@ export function daysUntilPayday(paydayDay: number, now = new Date()): { days: nu
 
 export function summariseIncome(input: {
   expected: number;
+  received?: number | null;
   spent: number;
   billsDue: number;
   paydayDay: number;
   now?: Date;
 }): IncomeSummary {
   const expected = Math.max(0, input.expected);
+  const received = Math.max(0, input.received ?? 0);
+  const isReceived = received > 0;
+  const base = isReceived ? received : expected;
   const spent = Math.max(0, input.spent);
   const billsDue = Math.max(0, input.billsDue);
   const committed = spent + billsDue;
-  const available = expected - committed;
+  const available = base - committed;
 
   const { days, isToday } = daysUntilPayday(input.paydayDay, input.now);
   // Spread the remaining money across the days left in the cycle (at least today).
   const remainingDays = Math.max(1, isToday ? 1 : days);
   const dailyAllowance = Math.max(0, available) / remainingDays;
 
-  const usedRatio = expected > 0 ? Math.min(1, committed / expected) : committed > 0 ? 1 : 0;
+  const usedRatio = base > 0 ? Math.min(1, committed / base) : committed > 0 ? 1 : 0;
 
   return {
     expected,
+    base,
+    isReceived,
     spent,
     billsDue,
     committed,

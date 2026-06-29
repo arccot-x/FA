@@ -6,8 +6,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as NavigationBar from "expo-navigation-bar";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
-import { useEffect } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, I18nManager, Platform, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { HomeScreen } from "./src/screens/HomeScreen";
@@ -17,13 +17,18 @@ import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { CameraScreen } from "./src/screens/CameraScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
+import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { AppTabBar } from "./src/components/AppTabBar";
 import { useFinanceStore } from "./src/store/useFinanceStore";
 import { ThemeProvider, useTheme, useThemeContext } from "./src/theme";
 import { I18nProvider, useI18n } from "./src/i18n";
 import { CurrencyProvider } from "./src/utils/CurrencyProvider";
 import { BudgetProvider } from "./src/utils/BudgetProvider";
+import { GoalsProvider } from "./src/utils/GoalsProvider";
 import { RemindersProvider } from "./src/utils/RemindersProvider";
+import { AppLockProvider } from "./src/utils/AppLockProvider";
+import { getPref, PREF_KEYS, setPref } from "./src/utils/prefs";
+import { toNumber } from "./src/utils/money";
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -60,12 +65,40 @@ function MainTabs() {
 function Root() {
   const theme = useTheme();
   const { ready: themeReady } = useThemeContext();
-  const { t, ready: i18nReady } = useI18n();
+  const { t, ready: i18nReady, isRTL } = useI18n();
   const { authReady, restoreSession, user } = useFinanceStore();
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
+
+  // Allow RTL layouts; full native mirroring for Arabic applies after an app restart.
+  useEffect(() => {
+    I18nManager.allowRTL(true);
+    if (I18nManager.isRTL !== isRTL) {
+      I18nManager.forceRTL(isRTL);
+    }
+  }, [isRTL]);
+
+  // Decide whether to show first-run onboarding (new accounts with no income set).
+  useEffect(() => {
+    void (async () => {
+      if (!user) {
+        setNeedsOnboarding(false);
+        return;
+      }
+      const onboarded = await getPref(PREF_KEYS.onboarded);
+      if (onboarded === "true") {
+        setNeedsOnboarding(false);
+      } else if (toNumber(user.defaultMonthlyIncome) > 0) {
+        void setPref(PREF_KEYS.onboarded, "true");
+        setNeedsOnboarding(false);
+      } else {
+        setNeedsOnboarding(true);
+      }
+    })();
+  }, [user]);
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(theme.colors.background);
@@ -98,12 +131,21 @@ function Root() {
           <Text style={[styles.loadingText, { color: theme.colors.subtleText }]}>{t("loadingAccount")}</Text>
         </View>
       ) : user ? (
-        <NavigationContainer theme={navTheme}>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="Camera" component={CameraScreen} options={{ presentation: "fullScreenModal" }} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        needsOnboarding ? (
+          <OnboardingScreen
+            onDone={() => {
+              void setPref(PREF_KEYS.onboarded, "true");
+              setNeedsOnboarding(false);
+            }}
+          />
+        ) : (
+          <NavigationContainer theme={navTheme}>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              <Stack.Screen name="Camera" component={CameraScreen} options={{ presentation: "fullScreenModal" }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        )
       ) : (
         <AuthScreen />
       )}
@@ -119,9 +161,13 @@ export default function App() {
           <I18nProvider>
             <CurrencyProvider>
               <BudgetProvider>
-                <RemindersProvider>
-                  <Root />
-                </RemindersProvider>
+                <GoalsProvider>
+                  <RemindersProvider>
+                    <AppLockProvider>
+                      <Root />
+                    </AppLockProvider>
+                  </RemindersProvider>
+                </GoalsProvider>
               </BudgetProvider>
             </CurrencyProvider>
           </I18nProvider>

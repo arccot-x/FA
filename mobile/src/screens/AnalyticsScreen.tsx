@@ -1,12 +1,13 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo } from "react";
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
-import { BarChart, PieChart } from "react-native-chart-kit";
+import { BarChart, LineChart, PieChart } from "react-native-chart-kit";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
 import { EmptyState } from "../components/ui";
 import { BudgetsSection } from "./BudgetsSection";
+import { GoalsSection } from "./GoalsSection";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
@@ -17,7 +18,7 @@ const chartWidth = Math.min(Dimensions.get("window").width - 32 - 32, 420);
 
 export function AnalyticsScreen() {
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const money = useMoney();
   const { load, transactions, incomeCycle, bills } = useFinanceStore();
 
@@ -47,8 +48,20 @@ export function AnalyticsScreen() {
       return acc;
     }, {});
 
-    return { income, expenses, billsDue, groceries: sumCat(current, "GROCERIES"), lastMonthGroceries: sumCat(previous, "GROCERIES"), categories };
-  }, [incomeCycle, bills.unpaid, transactions]);
+    // Last 6 months of total spend for the trend line.
+    const trend = Array.from({ length: 6 }, (_, i) => {
+      const ref = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const total = cleared
+        .filter((item) => {
+          const d = new Date(item.occurredAt);
+          return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
+        })
+        .reduce((sum, item) => sum + toNumber(item.amount), 0);
+      return { label: ref.toLocaleDateString(locale, { month: "short" }), total };
+    });
+
+    return { income, expenses, billsDue, groceries: sumCat(current, "GROCERIES"), lastMonthGroceries: sumCat(previous, "GROCERIES"), categories, trend };
+  }, [incomeCycle, bills.unpaid, transactions, locale]);
 
   const piePalette = [theme.colors.primary, theme.colors.accent, theme.colors.info, theme.colors.warning, theme.colors.success, theme.colors.muted];
   const pieData = Object.entries(analytics.categories).map(([name, amount], index) => ({
@@ -115,8 +128,35 @@ export function AnalyticsScreen() {
           )}
         </Animated.View>
 
+        <Animated.View
+          entering={FadeInDown.delay(150).duration(380)}
+          style={[styles.panel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
+        >
+          <Text style={[styles.panelTitle, { color: theme.colors.text }]}>{t("trends.title")}</Text>
+          {analytics.trend.some((point) => point.total > 0) ? (
+            <LineChart
+              width={chartWidth}
+              height={200}
+              fromZero
+              bezier
+              withInnerLines
+              yAxisLabel=""
+              yAxisSuffix=""
+              data={{ labels: analytics.trend.map((point) => point.label), datasets: [{ data: analytics.trend.map((point) => point.total) }] }}
+              chartConfig={chartConfig}
+              style={styles.chart}
+            />
+          ) : (
+            <EmptyState icon="chart-line" message={t("trends.empty")} />
+          )}
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.delay(170).duration(380)}>
           <BudgetsSection spentByCategory={analytics.categories} />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(190).duration(380)}>
+          <GoalsSection />
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[styles.insight, { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning, borderRadius: theme.radii.lg }]}>

@@ -4,6 +4,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import type { ComponentProps } from "react";
 import { PressableScale } from "./PressableScale";
 import { useTheme } from "../../theme";
+import { tapLight } from "../../utils/haptics";
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 type Variant = "primary" | "secondary" | "danger" | "ghost";
@@ -35,7 +36,10 @@ export function Button({ label, onPress, variant = "primary", icon, loading, dis
     <PressableScale
       accessibilityRole="button"
       disabled={isDisabled}
-      onPress={onPress}
+      onPress={() => {
+        tapLight();
+        onPress();
+      }}
       style={[
         styles.base,
         {

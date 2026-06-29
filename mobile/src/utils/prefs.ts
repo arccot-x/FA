@@ -25,5 +25,6 @@ export const PREF_KEYS = {
   currency: "pref-currency",
   budgets: "pref-budgets",
   remindersEnabled: "pref-reminders-enabled",
-  remindersDays: "pref-reminders-days"
+  remindersDays: "pref-reminders-days",
+  onboarded: "pref-onboarded"
 } as const;

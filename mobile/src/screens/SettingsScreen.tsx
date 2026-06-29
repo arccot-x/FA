@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
 import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
 import { IncomeEditorModal } from "./IncomeEditorModal";
+import { ChangePasswordModal } from "./ChangePasswordModal";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme, useThemeContext } from "../theme";
 import type { ThemeMode } from "../theme";
@@ -12,6 +13,8 @@ import { LOCALES, useI18n } from "../i18n";
 import type { Locale } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
 import { useReminders } from "../utils/RemindersProvider";
+import { useAppLock } from "../utils/AppLockProvider";
+import { exportTransactionsCsv } from "../utils/exportData";
 import { CURRENCIES } from "../utils/money";
 import type { CurrencyCode } from "../utils/money";
 import { toNumber } from "../utils/money";
@@ -24,14 +27,41 @@ export function SettingsScreen() {
   const { t, locale, setLocale } = useI18n();
   const { currency, setCurrency } = useCurrency();
   const { enabled: remindersEnabled, daysBefore, setEnabled: setRemindersEnabled, setDaysBefore } = useReminders();
-  const { user, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle } = useFinanceStore();
+  const { enabled: lockEnabled, setEnabled: setLockEnabled } = useAppLock();
+  const { user, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle, transactions, deleteAccount } = useFinanceStore();
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [changePwOpen, setChangePwOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const toggleReminders = async (next: boolean) => {
     const ok = await setRemindersEnabled(next);
     if (next && !ok) {
       Alert.alert(t("settings.notifications"), t("reminders.denied"));
     }
+  };
+
+  const toggleLock = async (next: boolean) => {
+    const ok = await setLockEnabled(next);
+    if (next && !ok) {
+      Alert.alert(t("security.title"), t("security.unavailable"));
+    }
+  };
+
+  const runExport = async () => {
+    setExporting(true);
+    try {
+      const ok = await exportTransactionsCsv(transactions);
+      if (!ok) Alert.alert(t("dataExport.title"), t("dataExport.nothing"));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(t("account.deleteTitle"), t("account.deleteMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("account.deleteConfirm"), style: "destructive", onPress: () => void deleteAccount() }
+    ]);
   };
 
   const themeSegments: { value: ThemeMode; label: string }[] = [
@@ -105,8 +135,30 @@ export function SettingsScreen() {
           ) : null}
         </Section>
 
+        {/* Security */}
+        <Section delay={170} title={t("security.title")} theme={theme}>
+          <View style={styles.switchRow}>
+            <View style={styles.switchText}>
+              <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("security.appLock")}</Text>
+              <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("security.appLockHint")}</Text>
+            </View>
+            <Switch
+              value={lockEnabled}
+              onValueChange={(next) => void toggleLock(next)}
+              trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </Section>
+
+        {/* Data */}
+        <Section delay={190} title={t("dataExport.title")} theme={theme}>
+          <Text style={[styles.switchMeta, { color: theme.colors.subtleText, marginBottom: 12 }]}>{t("dataExport.hint")}</Text>
+          <Button label={t("dataExport.button")} icon="file-export" variant="secondary" loading={exporting} onPress={() => void runExport()} />
+        </Section>
+
         {/* Account */}
-        <Section delay={200} title={t("settings.account")} theme={theme}>
+        <Section delay={210} title={t("settings.account")} theme={theme}>
           {user ? (
             <View style={[styles.account, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
               <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
@@ -123,7 +175,9 @@ export function SettingsScreen() {
             </View>
           ) : null}
           <Button label={t("settings.incomeSettings")} icon="cash-multiple" variant="secondary" onPress={() => setIncomeOpen(true)} style={styles.spaced} />
-          <Button label={t("settings.signOut")} icon="logout" variant="danger" onPress={() => void logout()} style={styles.spaced} />
+          <Button label={t("account.changePassword")} icon="lock-reset" variant="secondary" onPress={() => setChangePwOpen(true)} style={styles.spaced} />
+          <Button label={t("settings.signOut")} icon="logout" variant="secondary" onPress={() => void logout()} style={styles.spaced} />
+          <Button label={t("account.deleteAccount")} icon="account-remove" variant="danger" onPress={confirmDeleteAccount} style={styles.spaced} />
         </Section>
 
         <View style={styles.about}>
@@ -138,12 +192,15 @@ export function SettingsScreen() {
         visible={incomeOpen}
         userIncome={toNumber(user?.defaultMonthlyIncome)}
         currentExpected={toNumber(incomeCycle?.expected)}
+        currentActual={toNumber(incomeCycle?.actual)}
         paydayDay={user?.paydayDay ?? 1}
         variableIncomeEnabled={user?.variableIncomeEnabled ?? false}
         onClose={() => setIncomeOpen(false)}
         onSaveSettings={saveIncomeSettings}
         onSaveExpected={saveExpectedIncome}
       />
+
+      <ChangePasswordModal visible={changePwOpen} onClose={() => setChangePwOpen(false)} />
     </Screen>
   );
 }

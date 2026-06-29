@@ -7,6 +7,7 @@ import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
 import { formatDate } from "../utils/money";
+import { notifySuccess } from "../utils/haptics";
 
 type BillRowProps = {
   bill: BillOccurrence;
@@ -21,10 +22,15 @@ export function BillRow({ bill, onToggle, onEdit }: BillRowProps) {
   const paid = bill.status === "PAID";
   const dueLabel = formatDate(bill.dueDate, locale);
 
+  const handleToggle = () => {
+    if (!paid) notifySuccess();
+    onToggle();
+  };
+
   const rightAction = () => (
     <TouchableOpacity
       style={[styles.swipeAction, { backgroundColor: paid ? theme.colors.muted : theme.colors.success, borderRadius: theme.radii.lg }]}
-      onPress={onToggle}
+      onPress={handleToggle}
     >
       <MaterialCommunityIcons color="#FFFFFF" name={paid ? "undo-variant" : "check"} size={22} />
       <Text style={styles.swipeText}>{paid ? t("bills.unpay") : t("bills.paid")}</Text>
@@ -47,7 +53,7 @@ export function BillRow({ bill, onToggle, onEdit }: BillRowProps) {
             }
           ]}
         >
-          <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: paid }} style={styles.check} onPress={onToggle}>
+          <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: paid }} style={styles.check} onPress={handleToggle}>
             <MaterialCommunityIcons
               color={paid ? theme.colors.success : theme.colors.muted}
               name={paid ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"}

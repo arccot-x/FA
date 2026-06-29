@@ -23,7 +23,9 @@ type FinanceState = {
   load: () => Promise<void>;
   addManualExpense: (amount: number, category: ExpenseCategory) => Promise<void>;
   saveIncomeSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
-  saveExpectedIncome: (expected: number) => Promise<void>;
+  saveExpectedIncome: (expected: number, actual?: number) => Promise<void>;
+  changePassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean }) => Promise<void>;
   markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
   editBillAmount: (bill: BillOccurrence, amount: number) => Promise<void>;
@@ -194,17 +196,38 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     await get().load();
   },
 
-  saveExpectedIncome: async (expected) => {
+  saveExpectedIncome: async (expected, actual) => {
     const user = requireUser(get().user);
     const currentCycle = get().incomeCycle;
     set({
       incomeCycle: currentCycle
-        ? { ...currentCycle, expected }
-        : { id: "local-income", expected, cycleMonth: new Date().toISOString() }
+        ? { ...currentCycle, expected, actual: actual ?? currentCycle.actual }
+        : { id: "local-income", expected, actual, cycleMonth: new Date().toISOString() }
     });
 
-    await api.saveIncomeCycle({ userId: user.id, month: currentMonthKey(), expected });
+    await api.saveIncomeCycle({ userId: user.id, month: currentMonthKey(), expected, actual });
     await get().load();
+  },
+
+  changePassword: async (input) => {
+    const user = requireUser(get().user);
+    await api.changePassword({ userId: user.id, currentPassword: input.currentPassword, newPassword: input.newPassword });
+  },
+
+  deleteAccount: async () => {
+    const user = requireUser(get().user);
+    await api.deleteAccount({ userId: user.id });
+    await clearSession();
+    set({
+      user: undefined,
+      incomeCycle: undefined,
+      bills: emptyBills,
+      transactions: [],
+      vaultDocuments: [],
+      loading: false,
+      offline: false,
+      authError: undefined
+    });
   },
 
   addBill: async (input) => {

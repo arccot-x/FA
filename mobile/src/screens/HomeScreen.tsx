@@ -9,6 +9,7 @@ import { AnimatedNumber, Gradient, IconButton, ProgressRing, PressableScale } fr
 import { QuickAddModal } from "./QuickAddModal";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { PendingExpenseModal } from "./PendingExpenseModal";
+import { AllActivityModal } from "./AllActivityModal";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
@@ -26,6 +27,7 @@ export function HomeScreen() {
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
 
   const { user, load, loading, offline, incomeCycle, bills, transactions, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction } =
@@ -41,10 +43,8 @@ export function HomeScreen() {
     const expected = toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200;
     const spent = transactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
     const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    return summariseIncome({ expected, spent, billsDue, paydayDay: user?.paydayDay ?? 1 });
+    return summariseIncome({ expected, received: toNumber(incomeCycle?.actual), spent, billsDue, paydayDay: user?.paydayDay ?? 1 });
   }, [incomeCycle, bills.unpaid, transactions, user?.defaultMonthlyIncome, user?.paydayDay]);
-
-  const pendingCount = transactions.filter((item) => item.status === "PENDING_DETAILS").length;
 
   const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => {
     const isPending = item.status === "PENDING_DETAILS";
@@ -94,7 +94,12 @@ export function HomeScreen() {
             <Animated.View entering={FadeInDown.duration(420)}>
               <Gradient colors={theme.colors.heroGradient} borderRadius={theme.radii.xl} style={[styles.hero, theme.shadow("md")]}>
                 <View style={styles.heroLeft}>
-                  <Text style={styles.heroLabel}>{t("home.safeToSpend")}</Text>
+                  <View style={styles.heroLabelRow}>
+                    <Text style={styles.heroLabel}>{t("home.safeToSpend")}</Text>
+                    <View style={styles.heroBadge}>
+                      <Text style={styles.heroBadgeText}>{summary.isReceived ? t("income.receivedBadge") : t("income.expectedBadge")}</Text>
+                    </View>
+                  </View>
                   <AnimatedNumber value={summary.available} format={(v) => money(v)} style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit />
                   <Text style={styles.heroSub}>
                     {t("home.perDay", { amount: money(summary.dailyAllowance) })}
@@ -119,10 +124,11 @@ export function HomeScreen() {
 
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.recentActivity")}</Text>
-              {pendingCount > 0 ? (
-                <View style={[styles.pendingPill, { backgroundColor: theme.colors.warningSoft }]}>
-                  <Text style={[styles.pendingText, { color: theme.colors.warning }]}>{t("home.pendingCount", { count: pendingCount })}</Text>
-                </View>
+              {transactions.length > 0 ? (
+                <PressableScale onPress={() => setActivityOpen(true)} style={styles.seeAll}>
+                  <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>{t("activity.seeAll")}</Text>
+                  <MaterialCommunityIcons color={theme.colors.primary} name="chevron-right" size={18} />
+                </PressableScale>
               ) : null}
             </View>
           </View>
@@ -151,6 +157,7 @@ export function HomeScreen() {
         visible={incomeOpen}
         userIncome={toNumber(user?.defaultMonthlyIncome)}
         currentExpected={toNumber(incomeCycle?.expected)}
+        currentActual={toNumber(incomeCycle?.actual)}
         paydayDay={user?.paydayDay ?? 1}
         variableIncomeEnabled={user?.variableIncomeEnabled ?? false}
         onClose={() => setIncomeOpen(false)}
@@ -170,6 +177,13 @@ export function HomeScreen() {
           await deleteTransaction(tx);
           setPendingExpense(null);
         }}
+      />
+
+      <AllActivityModal
+        visible={activityOpen}
+        transactions={transactions}
+        onClose={() => setActivityOpen(false)}
+        onSelect={(tx) => setPendingExpense(tx)}
       />
     </Screen>
   );
@@ -195,12 +209,29 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 12
   },
+  heroLabelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8
+  },
   heroLabel: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 13,
     fontWeight: "800",
     textTransform: "uppercase",
     letterSpacing: 0.6
+  },
+  heroBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2
+  },
+  heroBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase"
   },
   heroValue: {
     color: "#FFFFFF",
@@ -244,13 +275,12 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: "800"
   },
-  pendingPill: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 5
+  seeAll: {
+    alignItems: "center",
+    flexDirection: "row"
   },
-  pendingText: {
-    fontSize: 12,
+  seeAllText: {
+    fontSize: 14,
     fontWeight: "800"
   },
   txRow: {

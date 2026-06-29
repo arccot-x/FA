@@ -9,11 +9,12 @@ type IncomeEditorModalProps = {
   visible: boolean;
   userIncome: number;
   currentExpected: number;
+  currentActual: number;
   paydayDay: number;
   variableIncomeEnabled: boolean;
   onClose: () => void;
   onSaveSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
-  onSaveExpected: (expected: number) => Promise<void>;
+  onSaveExpected: (expected: number, actual?: number) => Promise<void>;
 };
 
 const PRESETS = [1500, 2500, 4000, 6000];
@@ -22,6 +23,7 @@ export function IncomeEditorModal({
   visible,
   userIncome,
   currentExpected,
+  currentActual,
   paydayDay,
   variableIncomeEnabled,
   onClose,
@@ -36,6 +38,7 @@ export function IncomeEditorModal({
   const [expected, setExpected] = useState(String(currentExpected || userIncome || ""));
   const [payday, setPayday] = useState(String(paydayDay || 1));
   const [variable, setVariable] = useState(variableIncomeEnabled);
+  const [received, setReceived] = useState(currentActual > 0);
   const [saving, setSaving] = useState(false);
 
   // Re-seed fields when the modal opens with fresh data.
@@ -45,8 +48,9 @@ export function IncomeEditorModal({
       setExpected(String(currentExpected || userIncome || ""));
       setPayday(String(paydayDay || 1));
       setVariable(variableIncomeEnabled);
+      setReceived(currentActual > 0);
     }
-  }, [visible, userIncome, currentExpected, paydayDay, variableIncomeEnabled]);
+  }, [visible, userIncome, currentExpected, currentActual, paydayDay, variableIncomeEnabled]);
 
   const save = async () => {
     const parsedIncome = Math.max(0, Number(income) || 0);
@@ -55,7 +59,8 @@ export function IncomeEditorModal({
     setSaving(true);
     try {
       await onSaveSettings({ defaultMonthlyIncome: parsedIncome, paydayDay: parsedPayday, variableIncomeEnabled: variable });
-      await onSaveExpected(parsedExpected);
+      // Mark the cycle as received (actual = expected) or clear it (0).
+      await onSaveExpected(parsedExpected, received ? parsedExpected : 0);
       onClose();
     } finally {
       setSaving(false);
@@ -84,6 +89,14 @@ export function IncomeEditorModal({
         </View>
 
         {variable ? <Field label={t("income.expectedThisMonth")} keyboardType="decimal-pad" value={expected} onChangeText={setExpected} /> : null}
+
+        <View style={[styles.switchRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
+          <View style={styles.switchText}>
+            <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("income.received")}</Text>
+            <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("income.receivedHint")}</Text>
+          </View>
+          <Switch value={received} onValueChange={setReceived} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
+        </View>
 
         <Button label={t("income.save")} icon="content-save" onPress={save} loading={saving} style={styles.saveButton} />
       </View>
