@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
+import * as ImagePicker from "expo-image-picker";
 import { Button, Chip, IconButton, PressableScale } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
 import { useTheme } from "../theme";
@@ -15,12 +16,17 @@ type QuickAddModalProps = {
   visible: boolean;
   onClose: () => void;
   onCamera: () => void;
+  onAttachImage: (uri: string) => void;
   onSubmit: (amount: number, category: ExpenseCategory) => Promise<void>;
 };
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"];
 
-export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAddModalProps) {
+// Curated quick-pick set that always includes "Other".
+const QUICK_VALUES: ExpenseCategory[] = ["GROCERIES", "DINING", "GAS", "TRANSPORT", "SHOPPING", "OTHER"];
+const quickCategories = QUICK_VALUES.map((value) => expenseCategoryOptions.find((option) => option.value === value)!);
+
+export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSubmit }: QuickAddModalProps) {
   const theme = useTheme();
   const { t } = useI18n();
   const { currency } = useCurrency();
@@ -29,6 +35,13 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
   const [saving, setSaving] = useState(false);
+
+  const pickFromGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    if (!result.canceled && result.assets[0]) {
+      onAttachImage(result.assets[0].uri);
+    }
+  };
 
   const append = (value: string) => {
     if (value === "." && amount.includes(".")) return;
@@ -55,7 +68,10 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
         <View style={styles.header}>
           <IconButton icon="close" onPress={onClose} />
           <Text style={[styles.title, { color: theme.colors.text }]}>{t("quickAdd.title")}</Text>
-          <IconButton icon="camera" tone="accent" onPress={onCamera} />
+          <View style={styles.headerActions}>
+            <IconButton icon="image-multiple" onPress={() => void pickFromGallery()} accessibilityLabel={t("quickAdd.gallery")} />
+            <IconButton icon="camera" tone="accent" onPress={onCamera} />
+          </View>
         </View>
 
         <Animated.Text key={amount} entering={FadeIn.duration(120)} adjustsFontSizeToFit numberOfLines={1} style={[styles.amount, { color: theme.colors.text }]}>
@@ -64,7 +80,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
         </Animated.Text>
 
         <View style={styles.categoryGrid}>
-          {expenseCategoryOptions.slice(0, 6).map((item) => (
+          {quickCategories.map((item) => (
             <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
           ))}
         </View>
@@ -106,6 +122,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 21,
     fontWeight: "800"
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8
   },
   amount: {
     fontSize: 52,

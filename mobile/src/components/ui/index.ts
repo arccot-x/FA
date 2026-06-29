@@ -10,3 +10,4 @@ export { Field } from "./Field";
 export { EmptyState } from "./EmptyState";
 export { ModalSheet } from "./ModalSheet";
 export { Gradient } from "./Gradient";
+export { ImageViewerModal } from "./ImageViewerModal";

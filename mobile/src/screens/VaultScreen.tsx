@@ -2,10 +2,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Linking, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
-import { Button, Chip, Field, IconButton, ModalSheet } from "../components/ui";
+import { Button, Chip, Field, IconButton, ImageViewerModal, ModalSheet, PressableScale } from "../components/ui";
 import { vaultCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
@@ -22,6 +22,15 @@ export function VaultScreen() {
   const [draft, setDraft] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<VaultCategory>("RECEIPT");
+  const [preview, setPreview] = useState<{ uri: string; title: string } | null>(null);
+
+  const openDocument = (document: VaultDocument) => {
+    if (document.mimeType.startsWith("image")) {
+      setPreview({ uri: document.url, title: document.title });
+    } else {
+      void Linking.openURL(document.url).catch(() => {});
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -56,21 +65,29 @@ export function VaultScreen() {
     }
   };
 
-  const renderDocument = (item: VaultDocument) => (
-    <View key={item.id} style={[styles.documentRow, { borderTopColor: theme.colors.border }]}>
-      <View style={[styles.docIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.md }]}>
-        <MaterialCommunityIcons color={theme.colors.primary} name={item.mimeType === "application/pdf" ? "file-pdf-box" : "file-image"} size={24} />
-      </View>
-      <View style={styles.docBody}>
-        <Text numberOfLines={1} style={[styles.docTitle, { color: theme.colors.text }]}>
-          {item.title}
-        </Text>
-        <Text numberOfLines={1} style={[styles.docMeta, { color: theme.colors.subtleText }]}>
-          {item.fileName}
-        </Text>
-      </View>
-    </View>
-  );
+  const renderDocument = (item: VaultDocument) => {
+    const isImage = item.mimeType.startsWith("image");
+    return (
+      <PressableScale key={item.id} scaleTo={0.98} onPress={() => openDocument(item)} style={[styles.documentRow, { borderTopColor: theme.colors.border }]}>
+        {isImage ? (
+          <Image source={{ uri: item.url }} style={[styles.docThumb, { borderRadius: theme.radii.md, backgroundColor: theme.colors.surfaceAlt }]} resizeMode="cover" />
+        ) : (
+          <View style={[styles.docIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.md }]}>
+            <MaterialCommunityIcons color={theme.colors.primary} name="file-pdf-box" size={24} />
+          </View>
+        )}
+        <View style={styles.docBody}>
+          <Text numberOfLines={1} style={[styles.docTitle, { color: theme.colors.text }]}>
+            {item.title}
+          </Text>
+          <Text numberOfLines={1} style={[styles.docMeta, { color: theme.colors.subtleText }]}>
+            {item.fileName}
+          </Text>
+        </View>
+        <MaterialCommunityIcons color={theme.colors.muted} name={isImage ? "eye" : "open-in-new"} size={18} />
+      </PressableScale>
+    );
+  };
 
   return (
     <Screen
@@ -140,6 +157,8 @@ export function VaultScreen() {
           )}
         </View>
       </ModalSheet>
+
+      <ImageViewerModal uri={preview?.uri ?? null} title={preview?.title} onClose={() => setPreview(null)} />
     </Screen>
   );
 }
@@ -192,6 +211,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: 44,
     justifyContent: "center",
+    width: 44
+  },
+  docThumb: {
+    height: 44,
     width: 44
   },
   docBody: {

@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
-import { ModalSheet, Field, Button, Chip } from "../components/ui";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { ModalSheet, Field, Button, Chip, ImageViewerModal, PressableScale } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
+import { useAi } from "../utils/AiProvider";
+import { scanReceipt } from "../utils/ai";
 import { toNumber } from "../utils/money";
 import type { ExpenseCategory, Transaction } from "../types";
 
@@ -17,13 +20,18 @@ type PendingExpenseModalProps = {
 export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }: PendingExpenseModalProps) {
   const { t } = useI18n();
   const theme = useTheme();
+  const ai = useAi();
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [notes, setNotes] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const scannedFor = useRef<string | null>(null);
 
   const isPending = transaction?.status === "PENDING_DETAILS";
+  const receiptUri = transaction?.attachments?.find((a) => a.mimeType?.startsWith("image"))?.url;
 
   // Prefill from the tapped transaction whenever it changes.
   useEffect(() => {
@@ -35,6 +43,36 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
       setCategory(transaction.category ?? "GROCERIES");
     }
   }, [transaction]);
+
+  const runScan = async (auto: boolean) => {
+    if (!receiptUri) return;
+    if (!ai.ready) {
+      if (!auto) Alert.alert(t("ai.title"), t("ai.needKey"));
+      return;
+    }
+    setScanning(true);
+    try {
+      const result = await scanReceipt(receiptUri, ai.apiKey);
+      // Fill empty fields only, so we don't clobber anything the user typed.
+      if (result.amount && !Number(amount)) setAmount(String(result.amount));
+      if (result.merchant && !merchant.trim()) setMerchant(result.merchant);
+      if (result.category) setCategory(result.category);
+    } catch {
+      if (!auto) Alert.alert(t("ai.title"), t("ai.failed"));
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  // Auto-scan once when a pending receipt with an image opens and AI is configured.
+  useEffect(() => {
+    if (transaction && isPending && receiptUri && ai.ready && scannedFor.current !== transaction.id) {
+      scannedFor.current = transaction.id;
+      void runScan(true);
+    }
+    if (!transaction) scannedFor.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transaction, receiptUri, ai.ready]);
 
   const save = async () => {
     const parsedAmount = Number(amount);
@@ -51,20 +89,36 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
     if (!transaction || !onDelete) return;
     Alert.alert(t("transaction.deleteTitle"), t("transaction.deleteMessage"), [
       { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("common.delete"),
-        style: "destructive",
-        onPress: () => {
-          void onDelete(transaction);
-        }
-      }
+      { text: t("common.delete"), style: "destructive", onPress: () => void onDelete(transaction) }
     ]);
   };
 
   return (
     <ModalSheet visible={transaction !== null} title={isPending ? t("pending.title") : t("transaction.editTitle")} onClose={onClose}>
       <View style={styles.form}>
-        <Field label={t("common.amount")} autoFocus={isPending} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+        {receiptUri ? (
+          <View>
+            <PressableScale scaleTo={0.98} onPress={() => setPreviewOpen(true)} style={[styles.receipt, { borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}>
+              <Image source={{ uri: receiptUri }} style={styles.receiptImage} resizeMode="cover" />
+              <View style={styles.receiptBadge}>
+                <MaterialCommunityIcons color="#FFFFFF" name="magnify-plus" size={16} />
+                <Text style={styles.receiptBadgeText}>{t("transaction.receipt")}</Text>
+              </View>
+            </PressableScale>
+            {ai.enabled ? (
+              <Button
+                label={scanning ? t("ai.scanning") : t("ai.scan")}
+                icon="robot-outline"
+                variant="secondary"
+                loading={scanning}
+                onPress={() => void runScan(false)}
+                style={styles.scanButton}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
+        <Field label={t("common.amount")} autoFocus={isPending && !receiptUri} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
         <Field label={t("pending.merchant")} value={merchant} onChangeText={setMerchant} />
         <View>
           <Text style={[styles.label, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
@@ -80,6 +134,14 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
           <Button label={t("transaction.delete")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} />
         ) : null}
       </View>
+
+      <ImageViewerModal uri={previewOpen ? receiptUri ?? null : null} title={t("transaction.receipt")} onClose={() => setPreviewOpen(false)} />
+      {scanning && receiptUri ? (
+        <View style={[styles.scanOverlay, { backgroundColor: theme.colors.overlay }]} pointerEvents="none">
+          <ActivityIndicator color="#FFFFFF" />
+          <Text style={styles.scanText}>{t("ai.scanning")}</Text>
+        </View>
+      ) : null}
     </ModalSheet>
   );
 }
@@ -103,5 +165,49 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     textAlignVertical: "top"
   },
-  save: { marginTop: 4 }
+  save: { marginTop: 4 },
+  receipt: {
+    borderWidth: 1,
+    height: 160,
+    overflow: "hidden"
+  },
+  receiptImage: {
+    height: "100%",
+    width: "100%"
+  },
+  receiptBadge: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 999,
+    bottom: 10,
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    position: "absolute",
+    right: 10
+  },
+  receiptBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  scanButton: {
+    marginTop: 10
+  },
+  scanOverlay: {
+    alignItems: "center",
+    bottom: 0,
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+    left: 0,
+    paddingVertical: 14,
+    position: "absolute",
+    right: 0
+  },
+  scanText: {
+    color: "#FFFFFF",
+    fontWeight: "800"
+  }
 });

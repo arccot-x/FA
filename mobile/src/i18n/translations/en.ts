@@ -71,7 +71,8 @@ export const en = {
   },
   quickAdd: {
     title: "Quick add",
-    saveExpense: "Save expense"
+    saveExpense: "Save expense",
+    gallery: "From gallery"
   },
   pending: {
     title: "Complete receipt",
@@ -83,7 +84,23 @@ export const en = {
     editTitle: "Edit expense",
     deleteTitle: "Delete expense?",
     deleteMessage: "This expense will be permanently removed.",
-    delete: "Delete expense"
+    delete: "Delete expense",
+    receipt: "Receipt"
+  },
+  preview: {
+    open: "Open file"
+  },
+  ai: {
+    title: "AI receipt scan",
+    enable: "Scan receipts with AI",
+    hint: "Use Grok to read the amount, merchant and category from a receipt photo and fill empty fields.",
+    apiKey: "Grok API key",
+    apiKeyPlaceholder: "xai-...",
+    scan: "Scan with AI",
+    scanning: "Reading receipt…",
+    failed: "Couldn't read the receipt. Please enter the details manually.",
+    needKey: "Add your Grok API key in Settings → AI receipt scan first.",
+    saved: "Saved"
   },
   budgets: {
     title: "Budgets",
@@ -126,7 +143,10 @@ export const en = {
     autopay: "Autopay",
     deleteBill: "Delete bill",
     deleteTitle: "Delete bill?",
-    deleteMessage: "This bill and its history will be removed."
+    deleteMessage: "This bill and its history will be removed.",
+    applyForever: "Apply to all months",
+    applyForeverHint: "Also updates this bill's default amount.",
+    thisMonthHint: "Changes only this month's amount."
   },
   vault: {
     title: "Vault",

@@ -73,7 +73,8 @@ export const tr: Translations = {
   },
   quickAdd: {
     title: "Hızlı ekle",
-    saveExpense: "Harcamayı kaydet"
+    saveExpense: "Harcamayı kaydet",
+    gallery: "Galeriden"
   },
   pending: {
     title: "Fişi tamamla",
@@ -85,7 +86,23 @@ export const tr: Translations = {
     editTitle: "Harcamayı düzenle",
     deleteTitle: "Harcama silinsin mi?",
     deleteMessage: "Bu harcama kalıcı olarak kaldırılacak.",
-    delete: "Harcamayı sil"
+    delete: "Harcamayı sil",
+    receipt: "Fiş"
+  },
+  preview: {
+    open: "Dosyayı aç"
+  },
+  ai: {
+    title: "Yapay zeka ile fiş tarama",
+    enable: "Fişleri yapay zeka ile tara",
+    hint: "Grok ile fiş fotoğrafından tutarı, işletmeyi ve kategoriyi okuyup boş alanları doldur.",
+    apiKey: "Grok API anahtarı",
+    apiKeyPlaceholder: "xai-...",
+    scan: "Yapay zeka ile tara",
+    scanning: "Fiş okunuyor…",
+    failed: "Fiş okunamadı. Lütfen bilgileri elle gir.",
+    needKey: "Önce Ayarlar → Yapay zeka ile fiş taramadan Grok API anahtarını ekle.",
+    saved: "Kaydedildi"
   },
   budgets: {
     title: "Bütçeler",
@@ -128,7 +145,10 @@ export const tr: Translations = {
     autopay: "Otomatik ödeme",
     deleteBill: "Faturayı sil",
     deleteTitle: "Fatura silinsin mi?",
-    deleteMessage: "Bu fatura ve geçmişi kaldırılacak."
+    deleteMessage: "Bu fatura ve geçmişi kaldırılacak.",
+    applyForever: "Tüm aylara uygula",
+    applyForeverHint: "Faturanın varsayılan tutarını da günceller.",
+    thisMonthHint: "Yalnızca bu ayın tutarını değiştirir."
   },
   vault: {
     title: "Kasa",

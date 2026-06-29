@@ -10,6 +10,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, I18nManager, Platform, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// Keep the native layout LTR for everyone. Arabic readability is handled per-text via
+// the `isRTL` flag (textAlign), which avoids the app getting stuck in mirrored RTL
+// when switching languages (native forceRTL needs an app reload to revert).
+I18nManager.allowRTL(false);
+I18nManager.forceRTL(false);
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { BillCenterScreen } from "./src/screens/BillCenterScreen";
 import { VaultScreen } from "./src/screens/VaultScreen";
@@ -27,6 +33,7 @@ import { BudgetProvider } from "./src/utils/BudgetProvider";
 import { GoalsProvider } from "./src/utils/GoalsProvider";
 import { RemindersProvider } from "./src/utils/RemindersProvider";
 import { AppLockProvider } from "./src/utils/AppLockProvider";
+import { AiProvider } from "./src/utils/AiProvider";
 import { getPref, PREF_KEYS, setPref } from "./src/utils/prefs";
 import { toNumber } from "./src/utils/money";
 
@@ -65,21 +72,13 @@ function MainTabs() {
 function Root() {
   const theme = useTheme();
   const { ready: themeReady } = useThemeContext();
-  const { t, ready: i18nReady, isRTL } = useI18n();
+  const { t, ready: i18nReady } = useI18n();
   const { authReady, restoreSession, user } = useFinanceStore();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
-
-  // Allow RTL layouts; full native mirroring for Arabic applies after an app restart.
-  useEffect(() => {
-    I18nManager.allowRTL(true);
-    if (I18nManager.isRTL !== isRTL) {
-      I18nManager.forceRTL(isRTL);
-    }
-  }, [isRTL]);
 
   // Decide whether to show first-run onboarding (new accounts with no income set).
   useEffect(() => {
@@ -162,11 +161,13 @@ export default function App() {
             <CurrencyProvider>
               <BudgetProvider>
                 <GoalsProvider>
-                  <RemindersProvider>
-                    <AppLockProvider>
-                      <Root />
-                    </AppLockProvider>
-                  </RemindersProvider>
+                  <AiProvider>
+                    <RemindersProvider>
+                      <AppLockProvider>
+                        <Root />
+                      </AppLockProvider>
+                    </RemindersProvider>
+                  </AiProvider>
                 </GoalsProvider>
               </BudgetProvider>
             </CurrencyProvider>

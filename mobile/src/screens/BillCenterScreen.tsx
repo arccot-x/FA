@@ -5,7 +5,7 @@ import { Alert, FlatList, Modal, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
 import { Screen } from "../components/Screen";
-import { Button, Chip, Field, IconButton, ModalSheet } from "../components/ui";
+import { Button, Chip, Field, IconButton, ModalSheet, PressableScale } from "../components/ui";
 import { billIconOptions, expenseCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
@@ -22,6 +22,7 @@ export function BillCenterScreen() {
   const [editing, setEditing] = useState<BillOccurrence | null>(null);
   const [adding, setAdding] = useState(false);
   const [amount, setAmount] = useState("");
+  const [applyForever, setApplyForever] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -32,13 +33,14 @@ export function BillCenterScreen() {
   const openEditor = (bill: BillOccurrence) => {
     setEditing(bill);
     setAmount(String(toNumber(bill.amount)));
+    setApplyForever(false);
   };
 
   const saveAmount = async () => {
     if (!editing) return;
     const nextAmount = Number(amount);
     if (!Number.isFinite(nextAmount) || nextAmount < 0) return;
-    await editBillAmount(editing, nextAmount);
+    await editBillAmount(editing, nextAmount, applyForever);
     setEditing(null);
   };
 
@@ -106,6 +108,22 @@ export function BillCenterScreen() {
             <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
             <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
             <Field keyboardType="decimal-pad" autoFocus value={amount} onChangeText={setAmount} containerStyle={styles.editorField} />
+            <PressableScale
+              onPress={() => setApplyForever((value) => !value)}
+              style={[styles.foreverRow, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}
+            >
+              <MaterialCommunityIcons
+                color={applyForever ? theme.colors.primary : theme.colors.muted}
+                name={applyForever ? "checkbox-marked" : "checkbox-blank-outline"}
+                size={24}
+              />
+              <View style={styles.foreverText}>
+                <Text style={[styles.foreverTitle, { color: theme.colors.text }]}>{t("bills.applyForever")}</Text>
+                <Text style={[styles.foreverHint, { color: theme.colors.subtleText }]}>
+                  {applyForever ? t("bills.applyForeverHint") : t("bills.thisMonthHint")}
+                </Text>
+              </View>
+            </PressableScale>
             <View style={styles.editorActions}>
               <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
               <Button label={t("common.save")} onPress={saveAmount} style={styles.editorButton} />
@@ -258,6 +276,26 @@ const styles = StyleSheet.create({
   },
   editorField: {
     marginTop: 16
+  },
+  foreverRow: {
+    alignItems: "center",
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+    padding: 14
+  },
+  foreverText: {
+    flex: 1
+  },
+  foreverTitle: {
+    fontSize: 15,
+    fontWeight: "800"
+  },
+  foreverHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2
   },
   editorActions: {
     flexDirection: "row",

@@ -190,6 +190,13 @@ export async function addBillTemplate(input: {
   });
 }
 
+export async function updateBillTemplate(userId: string, templateId: string, input: { defaultAmount?: number }) {
+  return request(`/bills/${userId}/templates/${templateId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function updateBill(userId: string, occurrenceId: string, input: { amount?: number; status?: "PAID" | "UNPAID" }) {
   return request(`/bills/${userId}/occurrences/${occurrenceId}`, {
     method: "PATCH",

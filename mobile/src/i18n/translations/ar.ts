@@ -73,7 +73,8 @@ export const ar: Translations = {
   },
   quickAdd: {
     title: "إضافة سريعة",
-    saveExpense: "حفظ المصروف"
+    saveExpense: "حفظ المصروف",
+    gallery: "من المعرض"
   },
   pending: {
     title: "إكمال الإيصال",
@@ -85,7 +86,23 @@ export const ar: Translations = {
     editTitle: "تعديل المصروف",
     deleteTitle: "حذف المصروف؟",
     deleteMessage: "سيُحذف هذا المصروف نهائياً.",
-    delete: "حذف المصروف"
+    delete: "حذف المصروف",
+    receipt: "إيصال"
+  },
+  preview: {
+    open: "فتح الملف"
+  },
+  ai: {
+    title: "مسح الإيصالات بالذكاء الاصطناعي",
+    enable: "امسح الإيصالات بالذكاء الاصطناعي",
+    hint: "استخدم Grok لقراءة المبلغ والمتجر والفئة من صورة الإيصال وملء الحقول الفارغة.",
+    apiKey: "مفتاح Grok API",
+    apiKeyPlaceholder: "xai-...",
+    scan: "مسح بالذكاء الاصطناعي",
+    scanning: "جارٍ قراءة الإيصال…",
+    failed: "تعذّرت قراءة الإيصال. أدخل التفاصيل يدوياً.",
+    needKey: "أضف مفتاح Grok API أولاً من الإعدادات ← مسح الإيصالات بالذكاء الاصطناعي.",
+    saved: "تم الحفظ"
   },
   budgets: {
     title: "الميزانيات",
@@ -128,7 +145,10 @@ export const ar: Translations = {
     autopay: "دفع تلقائي",
     deleteBill: "حذف الفاتورة",
     deleteTitle: "حذف الفاتورة؟",
-    deleteMessage: "ستُحذف هذه الفاتورة وسجلّها."
+    deleteMessage: "ستُحذف هذه الفاتورة وسجلّها.",
+    applyForever: "تطبيق على كل الأشهر",
+    applyForeverHint: "يحدّث أيضاً المبلغ الافتراضي للفاتورة.",
+    thisMonthHint: "يغيّر مبلغ هذا الشهر فقط."
   },
   vault: {
     title: "الخزنة",

@@ -30,7 +30,7 @@ export function HomeScreen() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
 
-  const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction } =
+  const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
 
   useFocusEffect(
@@ -48,12 +48,16 @@ export function HomeScreen() {
     [transactions, selectedMonth]
   );
 
+  // Money still owed this month (shown as an upcoming figure, not deducted from safe-to-spend).
+  const billsUnpaid = useMemo(() => bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0), [bills.unpaid]);
+
   const summary = useMemo(() => {
     const expected = toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200;
     const spent = monthTransactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
-    const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    return summariseIncome({ expected, received: toNumber(incomeCycle?.actual), spent, billsDue, paydayDay: user?.paydayDay ?? 1 });
-  }, [incomeCycle, bills.unpaid, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
+    // Only bills you've actually PAID reduce what's still usable; unpaid bills are upcoming.
+    const billsPaid = bills.settled.reduce((sum, item) => sum + toNumber(item.amount), 0);
+    return summariseIncome({ expected, received: toNumber(incomeCycle?.actual), spent, billsDue: billsPaid, paydayDay: user?.paydayDay ?? 1 });
+  }, [incomeCycle, bills.settled, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
 
   const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => {
     const isPending = item.status === "PENDING_DETAILS";
@@ -146,7 +150,7 @@ export function HomeScreen() {
             <Animated.View entering={FadeInDown.delay(80).duration(420)} style={styles.metrics}>
               <MetricTile label={t("home.income")} value={money(summary.expected)} icon="cash-multiple" tone="primary" />
               <MetricTile label={t("home.spent")} value={money(summary.spent)} icon="trending-down" tone="accent" />
-              <MetricTile label={t("home.unpaidBills")} value={money(summary.billsDue)} icon="calendar-clock" tone="danger" />
+              <MetricTile label={t("home.unpaidBills")} value={money(billsUnpaid)} icon="calendar-clock" tone="danger" />
             </Animated.View>
 
             <View style={styles.sectionHeader}>
@@ -177,6 +181,10 @@ export function HomeScreen() {
         onCamera={() => {
           setQuickAddOpen(false);
           navigation.navigate("Camera" as never);
+        }}
+        onAttachImage={async (uri) => {
+          setQuickAddOpen(false);
+          await recordSnap(uri);
         }}
       />
 

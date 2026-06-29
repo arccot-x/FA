@@ -30,7 +30,7 @@ type FinanceState = {
   deleteAccount: () => Promise<void>;
   addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean }) => Promise<void>;
   markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
-  editBillAmount: (bill: BillOccurrence, amount: number) => Promise<void>;
+  editBillAmount: (bill: BillOccurrence, amount: number, forever?: boolean) => Promise<void>;
   completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
   deleteTransaction: (transaction: Transaction) => Promise<void>;
   deleteBill: (bill: BillOccurrence) => Promise<void>;
@@ -262,11 +262,15 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     await get().load();
   },
 
-  editBillAmount: async (bill, amount) => {
+  editBillAmount: async (bill, amount, forever) => {
     const user = requireUser(get().user);
     const replace = (item: BillOccurrence) => (item.id === bill.id ? { ...item, amount } : item);
     set({ bills: { unpaid: get().bills.unpaid.map(replace), settled: get().bills.settled.map(replace) } });
+    // Always update this month's occurrence; optionally update the template so future months inherit it.
     await api.updateBill(user.id, bill.id, { amount });
+    if (forever) {
+      await api.updateBillTemplate(user.id, bill.billTemplate.id, { defaultAmount: amount });
+    }
     await get().load();
   },
 
