@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const usersRouter = Router();
 
@@ -29,6 +30,16 @@ usersRouter.post(
     });
 
     res.status(201).json(user);
+  })
+);
+
+usersRouter.delete(
+  "/:userId",
+  asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
+    // All owned rows (bills, transactions, income, vault, attachments) cascade-delete.
+    await prisma.user.delete({ where: { id: req.params.userId } });
+    res.status(204).send();
   })
 );
 

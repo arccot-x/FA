@@ -3,8 +3,15 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { hashPassword, publicUser, signUserToken, verifyPassword, verifyUserToken } from "../services/auth";
 import { asyncHandler } from "../utils/asyncHandler";
+import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const authRouter = Router();
+
+const changePasswordSchema = z.object({
+  userId: z.string().min(1),
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8)
+});
 
 const credentialsSchema = z.object({
   email: z.string().email().transform((value) => value.toLowerCase().trim()),
@@ -49,6 +56,26 @@ authRouter.post(
     }
 
     res.json({ user: publicUser(user), token: signUserToken(user) });
+  })
+);
+
+authRouter.post(
+  "/change-password",
+  asyncHandler(async (req, res) => {
+    const input = changePasswordSchema.parse(req.body);
+    requireUserAccess(req, input.userId);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: input.userId } });
+    if (!user.passwordHash || !(await verifyPassword(input.currentPassword, user.passwordHash))) {
+      throw new Error("Current password is incorrect.");
+    }
+
+    await prisma.user.update({
+      where: { id: input.userId },
+      data: { passwordHash: await hashPassword(input.newPassword) }
+    });
+
+    res.json({ ok: true });
   })
 );
 
