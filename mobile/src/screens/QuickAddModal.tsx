@@ -1,10 +1,15 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { ExpenseCategory } from "../types";
-import { colors, spacing } from "../theme";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { Button, Chip, IconButton, PressableScale } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
+import { useTheme } from "../theme";
+import { useI18n } from "../i18n";
+import { useCurrency } from "../utils/CurrencyProvider";
+import { CURRENCIES } from "../utils/money";
+import type { ExpenseCategory } from "../types";
 
 type QuickAddModalProps = {
   visible: boolean;
@@ -13,79 +18,74 @@ type QuickAddModalProps = {
   onSubmit: (amount: number, category: ExpenseCategory) => Promise<void>;
 };
 
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"];
+
 export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAddModalProps) {
+  const theme = useTheme();
+  const { t } = useI18n();
+  const { currency } = useCurrency();
+  const symbol = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "$";
+
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
+  const [saving, setSaving] = useState(false);
 
   const append = (value: string) => {
-    if (value === "." && amount.includes(".")) {
-      return;
-    }
-
+    if (value === "." && amount.includes(".")) return;
     setAmount((current) => `${current}${value}`.replace(/^0+(?=\d)/, ""));
   };
 
   const submit = async () => {
     const parsed = Number(amount);
-    if (!parsed) {
-      return;
+    if (!parsed) return;
+    setSaving(true);
+    try {
+      await onSubmit(parsed, category);
+      setAmount("");
+      setCategory("GROCERIES");
+      onClose();
+    } finally {
+      setSaving(false);
     }
-
-    await onSubmit(parsed, category);
-    setAmount("");
-    setCategory("GROCERIES");
-    onClose();
   };
 
   return (
-    <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <Modal animationType="slide" visible={visible} onRequestClose={onClose} statusBarTranslucent>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top", "bottom"]}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.iconButton} onPress={onClose}>
-            <MaterialCommunityIcons color={colors.text} name="close" size={26} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Quick Add</Text>
-          <TouchableOpacity style={[styles.iconButton, styles.cameraButton]} onPress={onCamera}>
-            <MaterialCommunityIcons color="#FFFFFF" name="camera" size={25} />
-          </TouchableOpacity>
+          <IconButton icon="close" onPress={onClose} />
+          <Text style={[styles.title, { color: theme.colors.text }]}>{t("quickAdd.title")}</Text>
+          <IconButton icon="camera" tone="accent" onPress={onCamera} />
         </View>
 
-        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.amount}>
-          ${amount || "0"}
-        </Text>
+        <Animated.Text key={amount} entering={FadeIn.duration(120)} adjustsFontSizeToFit numberOfLines={1} style={[styles.amount, { color: theme.colors.text }]}>
+          {symbol}
+          {amount || "0"}
+        </Animated.Text>
 
         <View style={styles.categoryGrid}>
-          {expenseCategoryOptions.slice(0, 6).map((item) => {
-            const selected = item.value === category;
-            return (
-              <Pressable key={item.value} style={[styles.category, selected && styles.categorySelected]} onPress={() => setCategory(item.value)}>
-                <MaterialCommunityIcons color={selected ? "#FFFFFF" : colors.primary} name={item.icon} size={24} />
-                <Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={styles.keypad}>
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"].map((key) => (
-            <TouchableOpacity
-              key={key}
-              style={styles.key}
-              onPress={() => (key === "backspace" ? setAmount((current) => current.slice(0, -1)) : append(key))}
-            >
-              {key === "backspace" ? (
-                <MaterialCommunityIcons color={colors.text} name="backspace-outline" size={26} />
-              ) : (
-                <Text style={styles.keyText}>{key}</Text>
-              )}
-            </TouchableOpacity>
+          {expenseCategoryOptions.slice(0, 6).map((item) => (
+            <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
           ))}
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={submit}>
-          <MaterialCommunityIcons color="#FFFFFF" name="check" size={22} />
-          <Text style={styles.saveText}>Save Expense</Text>
-        </TouchableOpacity>
+        <View style={styles.keypad}>
+          {KEYS.map((key) => (
+            <PressableScale
+              key={key}
+              style={[styles.key, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.md, borderColor: theme.colors.border }]}
+              onPress={() => (key === "backspace" ? setAmount((current) => current.slice(0, -1)) : append(key))}
+            >
+              {key === "backspace" ? (
+                <MaterialCommunityIcons color={theme.colors.text} name="backspace-outline" size={24} />
+              ) : (
+                <Text style={[styles.keyText, { color: theme.colors.text }]}>{key}</Text>
+              )}
+            </PressableScale>
+          ))}
+        </View>
+
+        <Button label={t("quickAdd.saveExpense")} icon="check" onPress={submit} loading={saving} style={styles.save} />
       </SafeAreaView>
     </Modal>
   );
@@ -94,104 +94,52 @@ export function QuickAddModal({ visible, onClose, onCamera, onSubmit }: QuickAdd
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm
+    paddingHorizontal: 16,
+    paddingBottom: 8
   },
   header: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: spacing.sm
+    marginTop: 8
   },
   title: {
-    color: colors.text,
     fontSize: 21,
     fontWeight: "800"
   },
-  iconButton: {
-    alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 46,
-    justifyContent: "center",
-    width: 46
-  },
-  cameraButton: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
-  },
   amount: {
-    color: colors.text,
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: "900",
-    marginVertical: spacing.md,
+    letterSpacing: -1,
+    marginVertical: 16,
     textAlign: "center"
   },
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  category: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexBasis: "31.8%",
-    gap: spacing.xs,
-    minHeight: 64,
-    justifyContent: "center"
-  },
-  categorySelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary
-  },
-  categoryText: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: "800"
-  },
-  categoryTextSelected: {
-    color: "#FFFFFF"
+    gap: 8
   },
   keypad: {
     flex: 1,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: 8,
     justifyContent: "center",
-    marginTop: spacing.md,
-    minHeight: 224
+    marginTop: 16,
+    minHeight: 220
   },
   key: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    height: 52,
+    borderWidth: 1,
+    height: 54,
     justifyContent: "center",
-    width: "30%"
+    width: "31.5%"
   },
   keyText: {
-    color: colors.text,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: "700"
   },
-  saveButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    marginTop: spacing.sm,
-    minHeight: 56
-  },
-  saveText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "800"
+  save: {
+    marginTop: 8
   }
 });

@@ -1,0 +1,200 @@
+export const en = {
+  common: {
+    save: "Save",
+    cancel: "Cancel",
+    close: "Close",
+    edit: "Edit",
+    add: "Add",
+    done: "Done",
+    delete: "Delete",
+    amount: "Amount",
+    category: "Category",
+    optional: "Optional",
+    loading: "Loading"
+  },
+  tabs: {
+    home: "Home",
+    bills: "Bills",
+    vault: "Vault",
+    analytics: "Insights",
+    settings: "Settings"
+  },
+  auth: {
+    appName: "Frictionless Finance",
+    tagline: "Keep your bills, receipts, vault files and income saved to your account.",
+    login: "Login",
+    create: "Create",
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    loginCta: "Login",
+    createCta: "Create Account",
+    invalidLogin: "Enter your email and at least 8 password characters.",
+    invalidRegister: "Enter your name, email and at least 8 password characters.",
+    genericError: "Something went wrong. Please try again."
+  },
+  loadingAccount: "Opening your account",
+  home: {
+    title: "Dashboard",
+    subtitle: "Your current month",
+    offline: "Offline — showing last saved data",
+    safeToSpend: "Safe to spend",
+    perDay: "{amount}/day",
+    daysToPayday: "{days} days to payday",
+    paydayToday: "Payday is today",
+    incomeUsed: "{percent}% of income used",
+    usedShort: "used",
+    available: "Available",
+    unpaidBills: "Unpaid bills",
+    income: "Income",
+    spent: "Spent",
+    recentActivity: "Recent activity",
+    pendingCount: "{count} pending",
+    pendingReceipt: "Pending receipt",
+    tapToAdd: "Tap to add details",
+    noActivity: "No activity yet. Add your first expense.",
+    quickAdd: "Quick add"
+  },
+  income: {
+    title: "Income",
+    monthlyIncome: "Monthly income",
+    payday: "Payday day",
+    variable: "Variable income",
+    variableHint: "Set a specific expected income for this month.",
+    expectedThisMonth: "Expected income this month",
+    received: "Mark as received",
+    receivedHint: "Track money that has actually landed.",
+    save: "Save income",
+    presets: "Quick amounts"
+  },
+  quickAdd: {
+    title: "Quick add",
+    saveExpense: "Save expense"
+  },
+  pending: {
+    title: "Complete receipt",
+    merchant: "Merchant",
+    notes: "Notes",
+    saveExpense: "Save expense"
+  },
+  transaction: {
+    editTitle: "Edit expense",
+    deleteTitle: "Delete expense?",
+    deleteMessage: "This expense will be permanently removed.",
+    delete: "Delete expense"
+  },
+  budgets: {
+    title: "Budgets",
+    subtitle: "Monthly limits by category",
+    empty: "Set a monthly limit on a category to track it here.",
+    manage: "Set budgets",
+    editTitle: "Monthly budgets",
+    cap: "Monthly limit",
+    of: "{spent} of {cap}",
+    left: "{amount} left",
+    over: "{amount} over"
+  },
+  reminders: {
+    title: "Bill reminders",
+    enable: "Remind me before bills are due",
+    hint: "Get a notification a few days before each unpaid bill.",
+    daysBefore: "Days before due",
+    denied: "Notifications are turned off. Enable them in system settings.",
+    notifTitle: "{bill} is due soon",
+    notifBody: "{bill} · {amount} is coming up. Don't forget to pay it."
+  },
+  bills: {
+    title: "Bills",
+    subtitle: "Unpaid bills stay first",
+    remaining: "Remaining this month",
+    unpaid: "Unpaid",
+    settled: "Settled",
+    empty: "No bills yet. Add one to get started.",
+    paid: "Paid",
+    unpay: "Unpay",
+    settledLabel: "Settled",
+    due: "Due {date}",
+    newBill: "New bill",
+    billName: "Bill name",
+    billNamePlaceholder: "Electric, Rent, Netflix",
+    dueDay: "Due day",
+    icon: "Icon",
+    createBill: "Create bill",
+    editThisMonth: "Edit this month",
+    autopay: "Autopay",
+    deleteBill: "Delete bill",
+    deleteTitle: "Delete bill?",
+    deleteMessage: "This bill and its history will be removed."
+  },
+  vault: {
+    title: "Vault",
+    subtitle: "Documents and receipts, organised",
+    saveDocument: "Save document",
+    docTitle: "Title",
+    folder: "Folder",
+    upload: "Upload to vault",
+    noDocuments: "No documents",
+    documentCount: "{count} files"
+  },
+  analytics: {
+    title: "Insights",
+    subtitle: "Month-over-month context",
+    income: "Income",
+    expenses: "Expenses",
+    incomeVsExpenses: "Income vs expenses",
+    categoryMix: "Category mix",
+    addExpenses: "Add expenses to see category trends.",
+    comparisonLabel: "This month",
+    bills: "Bills",
+    cmpFirst: "You spent {current} on groceries this month. Add more history to unlock comparisons.",
+    cmpLess: "You spent {current} on groceries — {delta} less than last month.",
+    cmpMore: "You spent {current} on groceries — {delta} more than last month."
+  },
+  settings: {
+    title: "Settings",
+    appearance: "Appearance",
+    theme: "Theme",
+    themeSystem: "System",
+    themeLight: "Light",
+    themeDark: "Dark",
+    language: "Language",
+    currency: "Currency",
+    account: "Account",
+    incomeSettings: "Income settings",
+    notifications: "Notifications",
+    signOut: "Sign out",
+    about: "About",
+    version: "Version",
+    madeWith: "Frictionless Finance"
+  },
+  category: {
+    GROCERIES: "Groceries",
+    DINING: "Dining",
+    GAS: "Gas",
+    TRANSPORT: "Transport",
+    SHOPPING: "Shopping",
+    ENTERTAINMENT: "Fun",
+    HEALTH: "Health",
+    HOME: "Home",
+    UTILITIES: "Utilities",
+    TRAVEL: "Travel",
+    SUBSCRIPTION: "Subscription",
+    OTHER: "Other"
+  },
+  vaultCategory: {
+    LEASE: "Lease",
+    TAX: "Tax",
+    INSURANCE: "Insurance",
+    RECEIPT: "Receipt",
+    BANKING: "Banking",
+    MEDICAL: "Medical",
+    WARRANTY: "Warranty",
+    OTHER: "Other"
+  },
+  camera: {
+    needAccess: "Camera access is needed for receipts",
+    allow: "Allow camera"
+  }
+};
+
+export type Translations = typeof en;

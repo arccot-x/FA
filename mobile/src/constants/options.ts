@@ -4,20 +4,26 @@ import type { ExpenseCategory, VaultCategory } from "../types";
 
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
-export const expenseCategoryOptions: Array<{ label: string; value: ExpenseCategory; icon: IconName }> = [
-  { label: "Groceries", value: "GROCERIES", icon: "cart" },
-  { label: "Dining", value: "DINING", icon: "silverware-fork-knife" },
-  { label: "Gas", value: "GAS", icon: "gas-station" },
-  { label: "Transport", value: "TRANSPORT", icon: "train-car" },
-  { label: "Shopping", value: "SHOPPING", icon: "shopping" },
-  { label: "Fun", value: "ENTERTAINMENT", icon: "movie-open" },
-  { label: "Health", value: "HEALTH", icon: "heart-pulse" },
-  { label: "Home", value: "HOME", icon: "home-city" },
-  { label: "Utilities", value: "UTILITIES", icon: "lightning-bolt" },
-  { label: "Travel", value: "TRAVEL", icon: "airplane" },
-  { label: "Subscription", value: "SUBSCRIPTION", icon: "refresh-circle" },
-  { label: "Other", value: "OTHER", icon: "dots-horizontal-circle" }
+// Labels are resolved through i18n at render time via t(`category.${value}`).
+export const expenseCategoryOptions: Array<{ value: ExpenseCategory; icon: IconName }> = [
+  { value: "GROCERIES", icon: "cart" },
+  { value: "DINING", icon: "silverware-fork-knife" },
+  { value: "GAS", icon: "gas-station" },
+  { value: "TRANSPORT", icon: "train-car" },
+  { value: "SHOPPING", icon: "shopping" },
+  { value: "ENTERTAINMENT", icon: "movie-open" },
+  { value: "HEALTH", icon: "heart-pulse" },
+  { value: "HOME", icon: "home-city" },
+  { value: "UTILITIES", icon: "lightning-bolt" },
+  { value: "TRAVEL", icon: "airplane" },
+  { value: "SUBSCRIPTION", icon: "refresh-circle" },
+  { value: "OTHER", icon: "dots-horizontal-circle" }
 ];
+
+export const categoryIcon: Record<ExpenseCategory, IconName> = expenseCategoryOptions.reduce(
+  (acc, item) => ({ ...acc, [item.value]: item.icon }),
+  {} as Record<ExpenseCategory, IconName>
+);
 
 export const billIconOptions: IconName[] = [
   "home-city",
@@ -32,15 +38,15 @@ export const billIconOptions: IconName[] = [
   "receipt"
 ];
 
-export const vaultCategoryOptions: Array<{ label: string; value: VaultCategory; icon: IconName }> = [
-  { label: "Lease", value: "LEASE", icon: "home-lock" },
-  { label: "Tax", value: "TAX", icon: "file-document" },
-  { label: "Insurance", value: "INSURANCE", icon: "shield-check" },
-  { label: "Receipt", value: "RECEIPT", icon: "receipt" },
-  { label: "Banking", value: "BANKING", icon: "bank" },
-  { label: "Medical", value: "MEDICAL", icon: "medical-bag" },
-  { label: "Warranty", value: "WARRANTY", icon: "certificate" },
-  { label: "Other", value: "OTHER", icon: "folder" }
+export const vaultCategoryOptions: Array<{ value: VaultCategory; icon: IconName }> = [
+  { value: "LEASE", icon: "home-lock" },
+  { value: "TAX", icon: "file-document" },
+  { value: "INSURANCE", icon: "shield-check" },
+  { value: "RECEIPT", icon: "receipt" },
+  { value: "BANKING", icon: "bank" },
+  { value: "MEDICAL", icon: "medical-bag" },
+  { value: "WARRANTY", icon: "certificate" },
+  { value: "OTHER", icon: "folder" }
 ];
 
 export function labelForCategory(value: string) {
@@ -49,4 +55,3 @@ export function labelForCategory(value: string) {
     .replace(/_/g, " ")
     .replace(/^\w/, (letter) => letter.toUpperCase());
 }
-

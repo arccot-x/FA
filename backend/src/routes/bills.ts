@@ -55,6 +55,19 @@ billsRouter.patch(
   })
 );
 
+billsRouter.delete(
+  "/:userId/templates/:templateId",
+  asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
+    // Occurrences cascade-delete with the template (see schema onDelete: Cascade).
+    await prisma.billTemplate.delete({
+      where: { id: req.params.templateId, userId: req.params.userId }
+    });
+
+    res.status(204).send();
+  })
+);
+
 const occurrenceSchema = z.object({
   amount: z.number().nonnegative().optional(),
   status: z.nativeEnum(BillStatus).optional(),

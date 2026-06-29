@@ -1,17 +1,24 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
-import { FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, Modal, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
 import { Screen } from "../components/Screen";
+import { Button, Chip, Field, IconButton, ModalSheet } from "../components/ui";
 import { billIconOptions, expenseCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
-import { colors, spacing } from "../theme";
+import { useTheme } from "../theme";
+import { useI18n } from "../i18n";
+import { useMoney } from "../utils/CurrencyProvider";
 import type { BillOccurrence, ExpenseCategory } from "../types";
-import { formatMoney, toNumber } from "../utils/money";
+import { toNumber } from "../utils/money";
 
 export function BillCenterScreen() {
-  const { bills, load, markBill, editBillAmount, addBill } = useFinanceStore();
+  const theme = useTheme();
+  const { t } = useI18n();
+  const money = useMoney();
+  const { bills, load, markBill, editBillAmount, addBill, deleteBill } = useFinanceStore();
   const [editing, setEditing] = useState<BillOccurrence | null>(null);
   const [adding, setAdding] = useState(false);
   const [amount, setAmount] = useState("");
@@ -28,90 +35,83 @@ export function BillCenterScreen() {
   };
 
   const saveAmount = async () => {
-    if (!editing) {
-      return;
-    }
-
+    if (!editing) return;
     const nextAmount = Number(amount);
-    if (!Number.isFinite(nextAmount) || nextAmount < 0) {
-      return;
-    }
-
+    if (!Number.isFinite(nextAmount) || nextAmount < 0) return;
     await editBillAmount(editing, nextAmount);
     setEditing(null);
   };
 
+  const confirmDelete = () => {
+    if (!editing) return;
+    const bill = editing;
+    Alert.alert(t("bills.deleteTitle"), t("bills.deleteMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.delete"),
+        style: "destructive",
+        onPress: () => {
+          setEditing(null);
+          void deleteBill(bill);
+        }
+      }
+    ]);
+  };
+
   const totalUnpaid = bills.unpaid.reduce((sum, bill) => sum + toNumber(bill.amount), 0);
+  const data = [...bills.unpaid, ...bills.settled];
 
   return (
     <Screen
-      title="Bill Center"
-      subtitle="Unpaid bills stay first"
-      action={
-        <TouchableOpacity style={styles.addButton} onPress={() => setAdding(true)}>
-          <MaterialCommunityIcons color="#FFFFFF" name="plus" size={24} />
-        </TouchableOpacity>
-      }
+      title={t("bills.title")}
+      subtitle={t("bills.subtitle")}
+      action={<IconButton icon="plus" tone="primary" onPress={() => setAdding(true)} accessibilityLabel={t("bills.newBill")} />}
     >
       <FlatList
         contentContainerStyle={styles.content}
-        data={[...bills.unpaid, ...bills.settled]}
+        data={data}
         keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <>
-            <View style={styles.summary}>
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.xl, ...theme.shadow("sm") }]}>
               <View>
-                <Text style={styles.summaryLabel}>Remaining this month</Text>
-                <Text style={styles.summaryValue}>{formatMoney(totalUnpaid)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.colors.subtleText }]}>{t("bills.remaining")}</Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{money(totalUnpaid)}</Text>
               </View>
-              <View style={styles.summaryIcon}>
-                <MaterialCommunityIcons color={colors.primary} name="calendar-check" size={30} />
+              <View style={[styles.summaryIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.lg }]}>
+                <MaterialCommunityIcons color={theme.colors.primary} name="calendar-check" size={28} />
               </View>
             </View>
-            <Text style={styles.sectionTitle}>Unpaid</Text>
-          </>
+            {bills.unpaid.length > 0 ? <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("bills.unpaid")}</Text> : null}
+          </Animated.View>
         }
         renderItem={({ item, index }) => {
-          const firstSettledIndex = bills.unpaid.length;
-          const showSettledHeader = index === firstSettledIndex && bills.settled.length > 0;
+          const showSettledHeader = index === bills.unpaid.length && bills.settled.length > 0;
           return (
             <>
-              {showSettledHeader ? <Text style={styles.sectionTitle}>Settled</Text> : null}
+              {showSettledHeader ? <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("bills.settled")}</Text> : null}
               <View style={styles.rowSpace}>
-                <BillRow
-                  bill={item}
-                  onEdit={() => openEditor(item)}
-                  onToggle={() => markBill(item, item.status === "PAID" ? "UNPAID" : "PAID")}
-                />
+                <BillRow bill={item} onEdit={() => openEditor(item)} onToggle={() => markBill(item, item.status === "PAID" ? "UNPAID" : "PAID")} />
               </View>
             </>
           );
         }}
-        ListEmptyComponent={<Text style={styles.empty}>No bills yet.</Text>}
+        ListEmptyComponent={<Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("bills.empty")}</Text>}
       />
 
-      <Modal transparent animationType="fade" visible={editing !== null} onRequestClose={() => setEditing(null)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.editor}>
-            <Text style={styles.editorTitle}>Edit This Month</Text>
-            <Text style={styles.editorLabel}>{editing?.billTemplate.name}</Text>
-            <TextInput
-              autoFocus
-              keyboardType="decimal-pad"
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="Amount"
-              style={styles.input}
-            />
+      <Modal transparent animationType="fade" visible={editing !== null} onRequestClose={() => setEditing(null)} statusBarTranslucent>
+        <View style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}>
+          <Animated.View entering={FadeInDown.duration(220)} style={[styles.editor, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
+            <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
+            <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
+            <Field keyboardType="decimal-pad" autoFocus value={amount} onChangeText={setAmount} containerStyle={styles.editorField} />
             <View style={styles.editorActions}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setEditing(null)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={saveAmount}>
-                <Text style={styles.saveText}>Save</Text>
-              </TouchableOpacity>
+              <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
+              <Button label={t("common.save")} onPress={saveAmount} style={styles.editorButton} />
             </View>
-          </View>
+            <Button label={t("bills.deleteBill")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} style={styles.editorDelete} />
+          </Animated.View>
         </View>
       </Modal>
 
@@ -137,298 +137,155 @@ type AddBillInput = {
 };
 
 function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClose: () => void; onSubmit: (input: AddBillInput) => Promise<void> }) {
+  const theme = useTheme();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("1");
   const [category, setCategory] = useState<ExpenseCategory>("UTILITIES");
   const [icon, setIcon] = useState("receipt");
+  const [saving, setSaving] = useState(false);
 
   const save = async () => {
     const parsedAmount = Number(amount);
     const parsedDay = Math.min(31, Math.max(1, Math.round(Number(dueDay) || 1)));
-    if (!name.trim() || !parsedAmount) {
-      return;
+    if (!name.trim() || !parsedAmount) return;
+    setSaving(true);
+    try {
+      await onSubmit({ name: name.trim(), defaultAmount: parsedAmount, dueDay: parsedDay, category, icon });
+      setName("");
+      setAmount("");
+      setDueDay("1");
+      setCategory("UTILITIES");
+      setIcon("receipt");
+    } finally {
+      setSaving(false);
     }
-
-    await onSubmit({
-      name: name.trim(),
-      defaultAmount: parsedAmount,
-      dueDay: parsedDay,
-      category,
-      icon
-    });
-    setName("");
-    setAmount("");
-    setDueDay("1");
-    setCategory("UTILITIES");
-    setIcon("receipt");
   };
 
   return (
-    <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <ScrollView contentContainerStyle={styles.addModal}>
-        <View style={styles.addHeader}>
-          <Text style={styles.addTitle}>New Bill</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <MaterialCommunityIcons color={colors.text} name="close" size={24} />
-          </TouchableOpacity>
+    <ModalSheet visible={visible} title={t("bills.newBill")} onClose={onClose}>
+      <View style={styles.form}>
+        <Field label={t("bills.billName")} placeholder={t("bills.billNamePlaceholder")} value={name} onChangeText={setName} />
+        <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+        <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} />
+        <View>
+          <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
+          <View style={styles.grid}>
+            {expenseCategoryOptions.map((item) => (
+              <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
+            ))}
+          </View>
         </View>
-        <Text style={styles.inputLabel}>Bill name</Text>
-        <TextInput value={name} onChangeText={setName} placeholder="Electric, Rent, Netflix" style={styles.formInput} />
-        <Text style={styles.inputLabel}>Amount</Text>
-        <TextInput keyboardType="decimal-pad" value={amount} onChangeText={setAmount} style={styles.formInput} />
-        <Text style={styles.inputLabel}>Due day</Text>
-        <TextInput keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} style={styles.formInput} />
-        <Text style={styles.inputLabel}>Category</Text>
-        <View style={styles.choiceGrid}>
-          {expenseCategoryOptions.map((item) => {
-            const selected = item.value === category;
-            return (
-              <TouchableOpacity key={item.value} style={[styles.choice, selected && styles.choiceSelected]} onPress={() => setCategory(item.value)}>
-                <MaterialCommunityIcons color={selected ? "#FFFFFF" : colors.primary} name={item.icon} size={20} />
-                <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{item.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+        <View>
+          <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("bills.icon")}</Text>
+          <View style={styles.grid}>
+            {billIconOptions.map((item) => (
+              <Chip key={item} icon={item} selected={item === icon} onPress={() => setIcon(item)} basis="13%" />
+            ))}
+          </View>
         </View>
-        <Text style={styles.inputLabel}>Icon</Text>
-        <View style={styles.iconGrid}>
-          {billIconOptions.map((item) => {
-            const selected = item === icon;
-            return (
-              <TouchableOpacity key={item} style={[styles.iconChoice, selected && styles.choiceSelected]} onPress={() => setIcon(item)}>
-                <MaterialCommunityIcons color={selected ? "#FFFFFF" : colors.primary} name={item} size={23} />
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <TouchableOpacity style={styles.primaryButton} onPress={save}>
-          <Text style={styles.primaryButtonText}>Create Bill</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </Modal>
+        <Button label={t("bills.createBill")} icon="plus" onPress={save} loading={saving} style={styles.save} />
+      </View>
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  addButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    height: 46,
-    justifyContent: "center",
-    width: 46
-  },
   content: {
-    padding: spacing.md,
+    padding: 16,
     paddingBottom: 96
   },
   summary: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.lg,
+    marginBottom: 20,
     minHeight: 108,
-    padding: spacing.lg
+    padding: 22
   },
   summaryLabel: {
-    color: colors.subtleText,
+    fontSize: 12,
     fontWeight: "800",
+    letterSpacing: 0.4,
     textTransform: "uppercase"
   },
   summaryValue: {
-    color: colors.text,
     fontSize: 34,
     fontWeight: "900",
-    marginTop: spacing.xs
+    marginTop: 6
   },
   summaryIcon: {
     alignItems: "center",
-    backgroundColor: "#E8F4F1",
-    borderRadius: 8,
-    height: 54,
+    height: 56,
     justifyContent: "center",
-    width: 54
+    width: 56
   },
   sectionTitle: {
-    color: colors.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "800",
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm
+    marginBottom: 8,
+    marginTop: 8
   },
   rowSpace: {
-    marginBottom: spacing.sm
+    marginBottom: 10
   },
   empty: {
-    color: colors.subtleText,
-    padding: spacing.lg,
+    fontSize: 15,
+    fontWeight: "600",
+    padding: 24,
     textAlign: "center"
   },
-  modalBackdrop: {
+  backdrop: {
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.36)",
     flex: 1,
     justifyContent: "center",
-    padding: spacing.lg
+    padding: 24
   },
   editor: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.lg,
+    padding: 24,
     width: "100%"
   },
   editorTitle: {
-    color: colors.text,
     fontSize: 20,
     fontWeight: "900"
   },
   editorLabel: {
-    color: colors.subtleText,
-    marginTop: spacing.xs
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 4
   },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "800",
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+  editorField: {
+    marginTop: 16
   },
   editorActions: {
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "flex-end",
-    marginTop: spacing.lg
+    gap: 10,
+    marginTop: 20
   },
-  cancelButton: {
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+  editorButton: {
+    flex: 1
   },
-  cancelText: {
-    color: colors.text,
-    fontWeight: "800"
+  editorDelete: {
+    marginTop: 10
   },
-  saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+  form: {
+    gap: 16
   },
-  saveText: {
-    color: "#FFFFFF",
-    fontWeight: "800"
-  },
-  addModal: {
-    backgroundColor: colors.background,
-    flexGrow: 1,
-    padding: spacing.md,
-    paddingTop: spacing.xl
-  },
-  addHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.lg
-  },
-  addTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  closeButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44
-  },
-  inputLabel: {
-    color: colors.subtleText,
+  formLabel: {
     fontSize: 12,
-    fontWeight: "900",
-    marginBottom: spacing.xs,
-    marginTop: spacing.md,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    marginBottom: 8,
     textTransform: "uppercase"
   },
-  formInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-    minHeight: 52,
-    paddingHorizontal: spacing.md
-  },
-  choiceGrid: {
+  grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm
+    gap: 8
   },
-  choice: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexBasis: "31%",
-    gap: spacing.xs,
-    minHeight: 70,
-    justifyContent: "center"
-  },
-  choiceSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary
-  },
-  choiceText: {
-    color: colors.text,
-    fontSize: 11,
-    fontWeight: "800"
-  },
-  choiceTextSelected: {
-    color: "#FFFFFF"
-  },
-  iconGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  iconChoice: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: "center",
-    width: 48
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    justifyContent: "center",
-    marginTop: spacing.lg,
-    minHeight: 56
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "900"
+  save: {
+    marginTop: 4
   }
 });

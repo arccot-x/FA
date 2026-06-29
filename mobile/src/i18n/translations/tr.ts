@@ -1,0 +1,200 @@
+import type { Translations } from "./en";
+
+export const tr: Translations = {
+  common: {
+    save: "Kaydet",
+    cancel: "İptal",
+    close: "Kapat",
+    edit: "Düzenle",
+    add: "Ekle",
+    done: "Tamam",
+    delete: "Sil",
+    amount: "Tutar",
+    category: "Kategori",
+    optional: "İsteğe bağlı",
+    loading: "Yükleniyor"
+  },
+  tabs: {
+    home: "Ana Sayfa",
+    bills: "Faturalar",
+    vault: "Kasa",
+    analytics: "Analiz",
+    settings: "Ayarlar"
+  },
+  auth: {
+    appName: "Frictionless Finance",
+    tagline: "Faturalarını, fişlerini, kasa dosyalarını ve gelirini hesabında sakla.",
+    login: "Giriş",
+    create: "Kayıt",
+    name: "Ad",
+    email: "E-posta",
+    password: "Parola",
+    loginCta: "Giriş Yap",
+    createCta: "Hesap Oluştur",
+    invalidLogin: "E-postanı ve en az 8 karakterli parolanı gir.",
+    invalidRegister: "Adını, e-postanı ve en az 8 karakterli parolanı gir.",
+    genericError: "Bir şeyler ters gitti. Lütfen tekrar dene."
+  },
+  loadingAccount: "Hesabın açılıyor",
+  home: {
+    title: "Panel",
+    subtitle: "Bu ayın özeti",
+    offline: "Çevrimdışı — son kayıtlı veriler",
+    safeToSpend: "Harcanabilir",
+    perDay: "{amount}/gün",
+    daysToPayday: "Maaşa {days} gün",
+    paydayToday: "Bugün maaş günü",
+    incomeUsed: "Gelirin %{percent}'i kullanıldı",
+    usedShort: "kullanıldı",
+    available: "Kalan",
+    unpaidBills: "Ödenmemiş faturalar",
+    income: "Gelir",
+    spent: "Harcanan",
+    recentActivity: "Son hareketler",
+    pendingCount: "{count} bekliyor",
+    pendingReceipt: "Bekleyen fiş",
+    tapToAdd: "Detay eklemek için dokun",
+    noActivity: "Henüz hareket yok. İlk harcamanı ekle.",
+    quickAdd: "Hızlı ekle"
+  },
+  income: {
+    title: "Gelir",
+    monthlyIncome: "Aylık gelir",
+    payday: "Maaş günü",
+    variable: "Değişken gelir",
+    variableHint: "Bu ay için özel bir beklenen gelir belirle.",
+    expectedThisMonth: "Bu ay beklenen gelir",
+    received: "Alındı olarak işaretle",
+    receivedHint: "Hesabına gerçekten geçen parayı takip et.",
+    save: "Geliri kaydet",
+    presets: "Hızlı tutarlar"
+  },
+  quickAdd: {
+    title: "Hızlı ekle",
+    saveExpense: "Harcamayı kaydet"
+  },
+  pending: {
+    title: "Fişi tamamla",
+    merchant: "İşletme",
+    notes: "Notlar",
+    saveExpense: "Harcamayı kaydet"
+  },
+  transaction: {
+    editTitle: "Harcamayı düzenle",
+    deleteTitle: "Harcama silinsin mi?",
+    deleteMessage: "Bu harcama kalıcı olarak kaldırılacak.",
+    delete: "Harcamayı sil"
+  },
+  budgets: {
+    title: "Bütçeler",
+    subtitle: "Kategoriye göre aylık limitler",
+    empty: "Takip etmek için bir kategoriye aylık limit belirle.",
+    manage: "Bütçe belirle",
+    editTitle: "Aylık bütçeler",
+    cap: "Aylık limit",
+    of: "{cap} / {spent}",
+    left: "{amount} kaldı",
+    over: "{amount} aşıldı"
+  },
+  reminders: {
+    title: "Fatura hatırlatıcıları",
+    enable: "Faturalar yaklaşınca hatırlat",
+    hint: "Her ödenmemiş faturadan birkaç gün önce bildirim al.",
+    daysBefore: "Kaç gün önce",
+    denied: "Bildirimler kapalı. Sistem ayarlarından aç.",
+    notifTitle: "{bill} yaklaşıyor",
+    notifBody: "{bill} · {amount} yaklaşıyor. Ödemeyi unutma."
+  },
+  bills: {
+    title: "Faturalar",
+    subtitle: "Ödenmemişler üstte kalır",
+    remaining: "Bu ay kalan",
+    unpaid: "Ödenmemiş",
+    settled: "Ödenmiş",
+    empty: "Henüz fatura yok. Başlamak için bir tane ekle.",
+    paid: "Ödendi",
+    unpay: "Geri al",
+    settledLabel: "Ödenmiş",
+    due: "Son: {date}",
+    newBill: "Yeni fatura",
+    billName: "Fatura adı",
+    billNamePlaceholder: "Elektrik, Kira, Netflix",
+    dueDay: "Ödeme günü",
+    icon: "Simge",
+    createBill: "Fatura oluştur",
+    editThisMonth: "Bu ayı düzenle",
+    autopay: "Otomatik ödeme",
+    deleteBill: "Faturayı sil",
+    deleteTitle: "Fatura silinsin mi?",
+    deleteMessage: "Bu fatura ve geçmişi kaldırılacak."
+  },
+  vault: {
+    title: "Kasa",
+    subtitle: "Belgeler ve fişler, düzenli",
+    saveDocument: "Belgeyi kaydet",
+    docTitle: "Başlık",
+    folder: "Klasör",
+    upload: "Kasaya yükle",
+    noDocuments: "Belge yok",
+    documentCount: "{count} dosya"
+  },
+  analytics: {
+    title: "Analiz",
+    subtitle: "Aydan aya karşılaştırma",
+    income: "Gelir",
+    expenses: "Gider",
+    incomeVsExpenses: "Gelir / Gider",
+    categoryMix: "Kategori dağılımı",
+    addExpenses: "Kategori eğilimleri için harcama ekle.",
+    comparisonLabel: "Bu ay",
+    bills: "Faturalar",
+    cmpFirst: "Bu ay markete {current} harcadın. Karşılaştırma için daha fazla geçmiş ekle.",
+    cmpLess: "Markete {current} harcadın — geçen aydan {delta} daha az.",
+    cmpMore: "Markete {current} harcadın — geçen aydan {delta} daha fazla."
+  },
+  settings: {
+    title: "Ayarlar",
+    appearance: "Görünüm",
+    theme: "Tema",
+    themeSystem: "Sistem",
+    themeLight: "Açık",
+    themeDark: "Koyu",
+    language: "Dil",
+    currency: "Para birimi",
+    account: "Hesap",
+    incomeSettings: "Gelir ayarları",
+    notifications: "Bildirimler",
+    signOut: "Çıkış yap",
+    about: "Hakkında",
+    version: "Sürüm",
+    madeWith: "Frictionless Finance"
+  },
+  category: {
+    GROCERIES: "Market",
+    DINING: "Yeme-İçme",
+    GAS: "Yakıt",
+    TRANSPORT: "Ulaşım",
+    SHOPPING: "Alışveriş",
+    ENTERTAINMENT: "Eğlence",
+    HEALTH: "Sağlık",
+    HOME: "Ev",
+    UTILITIES: "Faturalar",
+    TRAVEL: "Seyahat",
+    SUBSCRIPTION: "Abonelik",
+    OTHER: "Diğer"
+  },
+  vaultCategory: {
+    LEASE: "Kira",
+    TAX: "Vergi",
+    INSURANCE: "Sigorta",
+    RECEIPT: "Fiş",
+    BANKING: "Bankacılık",
+    MEDICAL: "Sağlık",
+    WARRANTY: "Garanti",
+    OTHER: "Diğer"
+  },
+  camera: {
+    needAccess: "Fişler için kamera erişimi gerekli",
+    allow: "Kameraya izin ver"
+  }
+};

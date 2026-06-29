@@ -61,3 +61,16 @@ transactionsRouter.patch(
     res.json(transaction);
   })
 );
+
+transactionsRouter.delete(
+  "/:userId/:transactionId",
+  asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
+    // Attachments cascade-delete with the transaction (see schema onDelete: Cascade).
+    await prisma.transaction.delete({
+      where: { id: req.params.transactionId, userId: req.params.userId }
+    });
+
+    res.status(204).send();
+  })
+);

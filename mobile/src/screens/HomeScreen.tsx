@@ -1,35 +1,35 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
-import { FlatList, Modal, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
+import { AnimatedNumber, Gradient, IconButton, ProgressRing, PressableScale } from "../components/ui";
 import { QuickAddModal } from "./QuickAddModal";
+import { IncomeEditorModal } from "./IncomeEditorModal";
+import { PendingExpenseModal } from "./PendingExpenseModal";
 import { useFinanceStore } from "../store/useFinanceStore";
-import { colors, spacing } from "../theme";
+import { useTheme } from "../theme";
+import { useI18n } from "../i18n";
+import { useMoney } from "../utils/CurrencyProvider";
+import { summariseIncome } from "../utils/income";
+import { categoryIcon } from "../constants/options";
 import type { ExpenseCategory, Transaction } from "../types";
-import { formatMoney, toNumber } from "../utils/money";
-import { expenseCategoryOptions, labelForCategory } from "../constants/options";
+import { toNumber } from "../utils/money";
 
 export function HomeScreen() {
   const navigation = useNavigation();
+  const theme = useTheme();
+  const { t } = useI18n();
+  const money = useMoney();
+
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
-  const {
-    user,
-    load,
-    loading,
-    offline,
-    incomeCycle,
-    bills,
-    transactions,
-    addManualExpense,
-    saveIncomeSettings,
-    saveExpectedIncome,
-    completePendingExpense,
-    logout
-  } = useFinanceStore();
+
+  const { user, load, loading, offline, incomeCycle, bills, transactions, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction } =
+    useFinanceStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -37,90 +37,117 @@ export function HomeScreen() {
     }, [load])
   );
 
-  const totals = useMemo(() => {
-    const expected = toNumber(incomeCycle?.expected) || 4200;
-    const expenses = transactions
-      .filter((item) => item.status === "CLEARED")
-      .reduce((sum, item) => sum + toNumber(item.amount), 0);
+  const summary = useMemo(() => {
+    const expected = toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200;
+    const spent = transactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
     const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
+    return summariseIncome({ expected, spent, billsDue, paydayDay: user?.paydayDay ?? 1 });
+  }, [incomeCycle, bills.unpaid, transactions, user?.defaultMonthlyIncome, user?.paydayDay]);
 
-    return { expected, expenses, billsDue, available: expected - expenses - billsDue };
-  }, [incomeCycle, bills.unpaid, transactions]);
+  const pendingCount = transactions.filter((item) => item.status === "PENDING_DETAILS").length;
 
-  const saveExpense = async (amount: number, category: ExpenseCategory) => {
-    await addManualExpense(amount, category);
+  const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => {
+    const isPending = item.status === "PENDING_DETAILS";
+    const icon = isPending ? "camera" : item.category ? categoryIcon[item.category] : "cash";
+    return (
+      <Animated.View entering={FadeInDown.delay(index * 45).duration(320)}>
+        <PressableScale
+          scaleTo={0.97}
+          onPress={() => setPendingExpense(item)}
+          style={[styles.txRow, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
+        >
+          <View style={[styles.txIcon, { backgroundColor: isPending ? theme.colors.warningSoft : theme.colors.primarySoft, borderRadius: theme.radii.md }]}>
+            <MaterialCommunityIcons color={isPending ? theme.colors.warning : theme.colors.primary} name={icon as never} size={22} />
+          </View>
+          <View style={styles.txBody}>
+            <Text numberOfLines={1} style={[styles.txTitle, { color: theme.colors.text }]}>
+              {item.merchant ?? (isPending ? t("home.pendingReceipt") : t(`category.${item.category ?? "OTHER"}` as never))}
+            </Text>
+            <Text style={[styles.txMeta, { color: theme.colors.subtleText }]}>
+              {isPending ? t("home.tapToAdd") : t(`category.${item.category ?? "OTHER"}` as never)}
+            </Text>
+          </View>
+          <Text style={[styles.txAmount, { color: isPending ? theme.colors.warning : theme.colors.text }]}>{item.amount ? money(item.amount) : "—"}</Text>
+        </PressableScale>
+      </Animated.View>
+    );
   };
 
-  const renderTransaction = ({ item }: { item: Transaction }) => (
-    <TouchableOpacity
-      activeOpacity={item.status === "PENDING_DETAILS" ? 0.75 : 1}
-      style={styles.transactionRow}
-      onPress={() => {
-        if (item.status === "PENDING_DETAILS") {
-          setPendingExpense(item);
-        }
-      }}
-    >
-      <View style={[styles.transactionIcon, item.status === "PENDING_DETAILS" && styles.pendingIcon]}>
-        <MaterialCommunityIcons color={item.status === "PENDING_DETAILS" ? colors.warning : colors.primary} name={item.source === "SNAP_SAVE" ? "camera" : "cash"} size={22} />
-      </View>
-      <View style={styles.transactionBody}>
-        <Text style={styles.transactionTitle}>{item.merchant ?? (item.status === "PENDING_DETAILS" ? "Pending receipt" : labelForCategory(item.category ?? "OTHER"))}</Text>
-        <Text style={styles.transactionMeta}>{item.status === "PENDING_DETAILS" ? "Tap to add details" : labelForCategory(item.category ?? "OTHER")}</Text>
-      </View>
-      <Text style={styles.transactionAmount}>{item.amount ? formatMoney(item.amount) : "--"}</Text>
-    </TouchableOpacity>
-  );
+  const usedPercent = Math.round(summary.usedRatio * 100);
 
   return (
     <Screen
-      title="Dashboard"
-      subtitle={offline ? "Offline demo mode" : "Your current month"}
-      action={
-        <TouchableOpacity style={styles.headerButton} onPress={() => setIncomeOpen(true)}>
-          <MaterialCommunityIcons color={colors.text} name="tune-variant" size={24} />
-        </TouchableOpacity>
-      }
+      title={t("home.title")}
+      subtitle={offline ? t("home.offline") : t("home.subtitle")}
+      action={<IconButton icon="tune-variant" onPress={() => setIncomeOpen(true)} accessibilityLabel={t("income.title")} />}
     >
       <FlatList
         contentContainerStyle={styles.content}
-        data={transactions.slice(0, 6)}
+        data={transactions.slice(0, 8)}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         renderItem={renderTransaction}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("home.noActivity")}</Text>}
         ListHeaderComponent={
-          <>
-            <View style={styles.metrics}>
-              <MetricTile label="Available" value={formatMoney(totals.available)} tone="primary" />
-              <MetricTile label="Unpaid Bills" value={formatMoney(totals.billsDue)} tone="danger" />
-            </View>
-            <View style={styles.metrics}>
-              <MetricTile label="Income" value={formatMoney(totals.expected)} />
-              <MetricTile label="Spent" value={formatMoney(totals.expenses)} />
-            </View>
+          <View style={styles.headerArea}>
+            <Animated.View entering={FadeInDown.duration(420)}>
+              <Gradient colors={theme.colors.heroGradient} borderRadius={theme.radii.xl} style={[styles.hero, theme.shadow("md")]}>
+                <View style={styles.heroLeft}>
+                  <Text style={styles.heroLabel}>{t("home.safeToSpend")}</Text>
+                  <AnimatedNumber value={summary.available} format={(v) => money(v)} style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit />
+                  <Text style={styles.heroSub}>
+                    {t("home.perDay", { amount: money(summary.dailyAllowance) })}
+                    {"  ·  "}
+                    {summary.isPaydayToday ? t("home.paydayToday") : t("home.daysToPayday", { days: summary.daysToPayday })}
+                  </Text>
+                </View>
+                <ProgressRing progress={summary.usedRatio} size={104} strokeWidth={11} color="#FFFFFF" trackColor={theme.colors.trackBg}>
+                  <View style={styles.ringCenter}>
+                    <Text style={styles.ringPercent}>{usedPercent}%</Text>
+                    <Text style={styles.ringHint}>{t("home.usedShort")}</Text>
+                  </View>
+                </ProgressRing>
+              </Gradient>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(80).duration(420)} style={styles.metrics}>
+              <MetricTile label={t("home.income")} value={money(summary.expected)} icon="cash-multiple" tone="primary" />
+              <MetricTile label={t("home.spent")} value={money(summary.spent)} icon="trending-down" tone="accent" />
+              <MetricTile label={t("home.unpaidBills")} value={money(summary.billsDue)} icon="calendar-clock" tone="danger" />
+            </Animated.View>
+
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <Text style={styles.sectionHint}>{transactions.filter((item) => item.status === "PENDING_DETAILS").length} pending</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.recentActivity")}</Text>
+              {pendingCount > 0 ? (
+                <View style={[styles.pendingPill, { backgroundColor: theme.colors.warningSoft }]}>
+                  <Text style={[styles.pendingText, { color: theme.colors.warning }]}>{t("home.pendingCount", { count: pendingCount })}</Text>
+                </View>
+              ) : null}
             </View>
-          </>
+          </View>
         }
       />
 
-      <TouchableOpacity accessibilityLabel="Quick add expense" style={styles.fab} onPress={() => setQuickAddOpen(true)}>
-        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={36} />
-      </TouchableOpacity>
+      <PressableScale
+        accessibilityLabel={t("home.quickAdd")}
+        style={[styles.fab, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.pill, ...theme.shadow("lg") }]}
+        onPress={() => setQuickAddOpen(true)}
+      >
+        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={34} />
+      </PressableScale>
 
       <QuickAddModal
         visible={quickAddOpen}
         onClose={() => setQuickAddOpen(false)}
-        onSubmit={saveExpense}
+        onSubmit={addManualExpense}
         onCamera={() => {
           setQuickAddOpen(false);
           navigation.navigate("Camera" as never);
         }}
       />
 
-      <IncomeModal
+      <IncomeEditorModal
         visible={incomeOpen}
         userIncome={toNumber(user?.defaultMonthlyIncome)}
         currentExpected={toNumber(incomeCycle?.expected)}
@@ -129,17 +156,18 @@ export function HomeScreen() {
         onClose={() => setIncomeOpen(false)}
         onSaveSettings={saveIncomeSettings}
         onSaveExpected={saveExpectedIncome}
-        onLogout={logout}
       />
 
       <PendingExpenseModal
         transaction={pendingExpense}
         onClose={() => setPendingExpense(null)}
         onSubmit={async (input) => {
-          if (!pendingExpense) {
-            return;
-          }
+          if (!pendingExpense) return;
           await completePendingExpense(pendingExpense, input);
+          setPendingExpense(null);
+        }}
+        onDelete={async (tx) => {
+          await deleteTransaction(tx);
           setPendingExpense(null);
         }}
       />
@@ -147,345 +175,129 @@ export function HomeScreen() {
   );
 }
 
-type IncomeModalProps = {
-  visible: boolean;
-  userIncome: number;
-  currentExpected: number;
-  paydayDay: number;
-  variableIncomeEnabled: boolean;
-  onClose: () => void;
-  onSaveSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
-  onSaveExpected: (expected: number) => Promise<void>;
-  onLogout: () => Promise<void>;
-};
-
-function IncomeModal({ visible, userIncome, currentExpected, paydayDay, variableIncomeEnabled, onClose, onSaveSettings, onSaveExpected, onLogout }: IncomeModalProps) {
-  const [income, setIncome] = useState(String(userIncome || 4200));
-  const [expected, setExpected] = useState(String(currentExpected || userIncome || 4200));
-  const [payday, setPayday] = useState(String(paydayDay || 1));
-  const [variable, setVariable] = useState(variableIncomeEnabled);
-
-  const save = async () => {
-    const parsedIncome = Math.max(0, Number(income) || 0);
-    const parsedExpected = Math.max(0, Number(expected) || parsedIncome);
-    const parsedPayday = Math.min(31, Math.max(1, Math.round(Number(payday) || 1)));
-    await onSaveSettings({ defaultMonthlyIncome: parsedIncome, paydayDay: parsedPayday, variableIncomeEnabled: variable });
-    await onSaveExpected(parsedExpected);
-    onClose();
-  };
-
-  return (
-    <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <ScrollView contentContainerStyle={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Income Engine</Text>
-          <TouchableOpacity style={styles.headerButton} onPress={onClose}>
-            <MaterialCommunityIcons color={colors.text} name="close" size={24} />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.inputLabel}>Default monthly income</Text>
-        <TextInput keyboardType="decimal-pad" value={income} onChangeText={setIncome} style={styles.input} />
-        <Text style={styles.inputLabel}>Payday day</Text>
-        <TextInput keyboardType="number-pad" value={payday} onChangeText={setPayday} style={styles.input} />
-        <View style={styles.switchRow}>
-          <View style={styles.switchText}>
-            <Text style={styles.switchTitle}>Variable income</Text>
-            <Text style={styles.switchMeta}>Use a specific expected income for this month.</Text>
-          </View>
-          <Switch value={variable} onValueChange={setVariable} trackColor={{ true: colors.primary, false: colors.border }} />
-        </View>
-        <Text style={styles.inputLabel}>This month's expected income</Text>
-        <TextInput keyboardType="decimal-pad" value={expected} onChangeText={setExpected} style={styles.input} />
-        <TouchableOpacity style={styles.primaryButton} onPress={save}>
-          <Text style={styles.primaryButtonText}>Save Income</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={async () => {
-            onClose();
-            await onLogout();
-          }}
-        >
-          <MaterialCommunityIcons color={colors.danger} name="logout" size={20} />
-          <Text style={styles.secondaryButtonText}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </Modal>
-  );
-}
-
-type PendingExpenseModalProps = {
-  transaction: Transaction | null;
-  onClose: () => void;
-  onSubmit: (input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
-};
-
-function PendingExpenseModal({ transaction, onClose, onSubmit }: PendingExpenseModalProps) {
-  const [amount, setAmount] = useState("");
-  const [merchant, setMerchant] = useState("");
-  const [notes, setNotes] = useState("");
-  const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
-
-  const save = async () => {
-    const parsedAmount = Number(amount);
-    if (!parsedAmount) {
-      return;
-    }
-    await onSubmit({ amount: parsedAmount, category, merchant: merchant.trim() || undefined, notes: notes.trim() || undefined });
-    setAmount("");
-    setMerchant("");
-    setNotes("");
-    setCategory("GROCERIES");
-  };
-
-  return (
-    <Modal animationType="slide" visible={transaction !== null} onRequestClose={onClose}>
-      <ScrollView contentContainerStyle={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Complete Receipt</Text>
-          <TouchableOpacity style={styles.headerButton} onPress={onClose}>
-            <MaterialCommunityIcons color={colors.text} name="close" size={24} />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.inputLabel}>Amount</Text>
-        <TextInput autoFocus keyboardType="decimal-pad" value={amount} onChangeText={setAmount} style={styles.input} />
-        <Text style={styles.inputLabel}>Merchant</Text>
-        <TextInput value={merchant} onChangeText={setMerchant} style={styles.input} />
-        <Text style={styles.inputLabel}>Category</Text>
-        <View style={styles.choiceGrid}>
-          {expenseCategoryOptions.map((item) => {
-            const selected = item.value === category;
-            return (
-              <TouchableOpacity key={item.value} style={[styles.choice, selected && styles.choiceSelected]} onPress={() => setCategory(item.value)}>
-                <MaterialCommunityIcons color={selected ? "#FFFFFF" : colors.primary} name={item.icon} size={20} />
-                <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{item.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <Text style={styles.inputLabel}>Notes</Text>
-        <TextInput multiline value={notes} onChangeText={setNotes} style={[styles.input, styles.notesInput]} />
-        <TouchableOpacity style={styles.primaryButton} onPress={save}>
-          <Text style={styles.primaryButtonText}>Save Expense</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.md,
+    padding: 16,
     paddingBottom: 120
   },
-  headerButton: {
+  headerArea: {
+    gap: 16,
+    marginBottom: 4
+  },
+  hero: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44
+    justifyContent: "space-between",
+    minHeight: 150,
+    padding: 20
+  },
+  heroLeft: {
+    flex: 1,
+    paddingRight: 12
+  },
+  heroLabel: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6
+  },
+  heroValue: {
+    color: "#FFFFFF",
+    fontSize: 40,
+    fontWeight: "900",
+    letterSpacing: -1,
+    marginTop: 4
+  },
+  heroSub: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 8
+  },
+  ringCenter: {
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  ringPercent: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "900"
+  },
+  ringHint: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 9,
+    fontWeight: "700",
+    textTransform: "uppercase"
   },
   metrics: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.sm
+    gap: 10
   },
   sectionHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    marginTop: spacing.md
+    marginTop: 8
   },
   sectionTitle: {
-    color: colors.text,
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: "800"
   },
-  sectionHint: {
-    color: colors.subtleText,
-    fontWeight: "700"
+  pendingPill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5
   },
-  transactionRow: {
+  pendingText: {
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  txRow: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    minHeight: 72,
-    padding: spacing.md
+    gap: 12,
+    marginTop: 10,
+    minHeight: 70,
+    padding: 14
   },
-  transactionIcon: {
+  txIcon: {
     alignItems: "center",
-    backgroundColor: "#E8F4F1",
-    borderRadius: 8,
     height: 42,
     justifyContent: "center",
     width: 42
   },
-  pendingIcon: {
-    backgroundColor: "#FFF2D8"
-  },
-  transactionBody: {
+  txBody: {
     flex: 1,
     minWidth: 0
   },
-  transactionTitle: {
-    color: colors.text,
+  txTitle: {
     fontSize: 15,
     fontWeight: "800"
   },
-  transactionMeta: {
-    color: colors.subtleText,
+  txMeta: {
+    fontSize: 13,
+    fontWeight: "600",
     marginTop: 2
   },
-  transactionAmount: {
-    color: colors.text,
+  txAmount: {
     fontSize: 16,
     fontWeight: "800"
+  },
+  empty: {
+    fontSize: 15,
+    fontWeight: "600",
+    paddingVertical: 32,
+    textAlign: "center"
   },
   fab: {
     alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: 32,
-    bottom: 28,
-    elevation: 7,
-    height: 64,
+    bottom: 24,
+    height: 62,
     justifyContent: "center",
     position: "absolute",
-    right: 24,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    width: 64
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    flexGrow: 1,
-    padding: spacing.md,
-    paddingTop: spacing.xl
-  },
-  modalHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.lg
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  inputLabel: {
-    color: colors.subtleText,
-    fontSize: 12,
-    fontWeight: "900",
-    marginBottom: spacing.xs,
-    marginTop: spacing.md,
-    textTransform: "uppercase"
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-    minHeight: 52,
-    paddingHorizontal: spacing.md
-  },
-  notesInput: {
-    minHeight: 88,
-    paddingTop: spacing.md,
-    textAlignVertical: "top"
-  },
-  switchRow: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: spacing.md,
-    padding: spacing.md
-  },
-  switchText: {
-    flex: 1,
-    paddingRight: spacing.md
-  },
-  switchTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  switchMeta: {
-    color: colors.subtleText,
-    marginTop: 2
-  },
-  choiceGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  choice: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexBasis: "31%",
-    gap: spacing.xs,
-    minHeight: 70,
-    justifyContent: "center"
-  },
-  choiceSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary
-  },
-  choiceText: {
-    color: colors.text,
-    fontSize: 11,
-    fontWeight: "800"
-  },
-  choiceTextSelected: {
-    color: "#FFFFFF"
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    justifyContent: "center",
-    marginTop: spacing.lg,
-    minHeight: 56
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  secondaryButton: {
-    alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    marginTop: spacing.md,
-    minHeight: 52
-  },
-  secondaryButtonText: {
-    color: colors.danger,
-    fontSize: 15,
-    fontWeight: "900"
+    right: 20,
+    width: 62
   }
 });

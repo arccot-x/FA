@@ -36,6 +36,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
   }
 
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -115,6 +119,14 @@ export async function updateTransaction(input: {
       status: input.status
     })
   });
+}
+
+export async function deleteTransaction(input: { userId: string; transactionId: string }) {
+  await request<void>(`/transactions/${input.userId}/${input.transactionId}`, { method: "DELETE" });
+}
+
+export async function deleteBillTemplate(input: { userId: string; templateId: string }) {
+  await request<void>(`/bills/${input.userId}/templates/${input.templateId}`, { method: "DELETE" });
 }
 
 export async function updateIncomeSettings(input: {

@@ -2,15 +2,23 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo } from "react";
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BarChart, PieChart } from "react-native-chart-kit";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
+import { EmptyState } from "../components/ui";
+import { BudgetsSection } from "./BudgetsSection";
 import { useFinanceStore } from "../store/useFinanceStore";
-import { colors, spacing } from "../theme";
-import { formatMoney, toNumber } from "../utils/money";
+import { useTheme } from "../theme";
+import { useI18n } from "../i18n";
+import { useMoney } from "../utils/CurrencyProvider";
+import { toNumber } from "../utils/money";
 
-const chartWidth = Math.min(Dimensions.get("window").width - spacing.md * 2, 420);
+const chartWidth = Math.min(Dimensions.get("window").width - 32 - 32, 420);
 
 export function AnalyticsScreen() {
+  const theme = useTheme();
+  const { t } = useI18n();
+  const money = useMoney();
   const { load, transactions, incomeCycle, bills } = useFinanceStore();
 
   useFocusEffect(
@@ -23,162 +31,151 @@ export function AnalyticsScreen() {
     const now = new Date();
     const income = toNumber(incomeCycle?.expected) || 4200;
     const cleared = transactions.filter((item) => item.status === "CLEARED");
-    const currentMonthTransactions = cleared.filter((item) => {
-      const date = new Date(item.occurredAt);
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    });
-    const previousMonthTransactions = cleared.filter((item) => {
-      const date = new Date(item.occurredAt);
-      const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      return date.getMonth() === previous.getMonth() && date.getFullYear() === previous.getFullYear();
-    });
-    const expenses = currentMonthTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    const groceries = currentMonthTransactions
-      .filter((item) => item.category === "GROCERIES")
-      .reduce((sum, item) => sum + toNumber(item.amount), 0);
-    const lastMonthGroceries = previousMonthTransactions
-      .filter((item) => item.category === "GROCERIES")
-      .reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const inMonth = (offset: number) => (date: Date) => {
+      const ref = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      return date.getMonth() === ref.getMonth() && date.getFullYear() === ref.getFullYear();
+    };
+    const current = cleared.filter((item) => inMonth(0)(new Date(item.occurredAt)));
+    const previous = cleared.filter((item) => inMonth(-1)(new Date(item.occurredAt)));
+    const sumCat = (list: typeof cleared, cat: string) => list.filter((i) => i.category === cat).reduce((s, i) => s + toNumber(i.amount), 0);
 
-    const categories = currentMonthTransactions.reduce<Record<string, number>>((acc, item) => {
+    const expenses = current.reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const categories = current.reduce<Record<string, number>>((acc, item) => {
       const key = item.category ?? "OTHER";
       acc[key] = (acc[key] ?? 0) + toNumber(item.amount);
       return acc;
     }, {});
 
-    return { income, expenses, billsDue, groceries, lastMonthGroceries, categories };
+    return { income, expenses, billsDue, groceries: sumCat(current, "GROCERIES"), lastMonthGroceries: sumCat(previous, "GROCERIES"), categories };
   }, [incomeCycle, bills.unpaid, transactions]);
 
+  const piePalette = [theme.colors.primary, theme.colors.accent, theme.colors.info, theme.colors.warning, theme.colors.success, theme.colors.muted];
   const pieData = Object.entries(analytics.categories).map(([name, amount], index) => ({
-    name: name.replace("_", " "),
+    name: t(`category.${name}` as never),
     amount,
-    color: ["#0E7C66", "#D95D39", "#246BFE", "#B86E00", "#59635F"][index % 5],
-    legendFontColor: colors.text,
+    color: piePalette[index % piePalette.length],
+    legendFontColor: theme.colors.subtleText,
     legendFontSize: 12
   }));
 
   const delta = analytics.lastMonthGroceries - analytics.groceries;
   const comparison =
     analytics.lastMonthGroceries === 0
-      ? `You spent ${formatMoney(analytics.groceries)} on groceries this month. Add more history to unlock stronger comparisons.`
+      ? t("analytics.cmpFirst", { current: money(analytics.groceries) })
       : delta >= 0
-        ? `You spent ${formatMoney(analytics.groceries)} on groceries. This is ${formatMoney(delta)} less than last month.`
-        : `You spent ${formatMoney(analytics.groceries)} on groceries. This is ${formatMoney(Math.abs(delta))} more than last month.`;
+        ? t("analytics.cmpLess", { current: money(analytics.groceries), delta: money(delta) })
+        : t("analytics.cmpMore", { current: money(analytics.groceries), delta: money(Math.abs(delta)) });
+
+  const chartConfig = {
+    backgroundGradientFrom: theme.colors.card,
+    backgroundGradientTo: theme.colors.card,
+    color: (opacity = 1) => hexToRgba(theme.colors.primary, opacity),
+    decimalPlaces: 0,
+    labelColor: () => theme.colors.subtleText,
+    barPercentage: 0.6,
+    propsForBackgroundLines: { stroke: theme.colors.border }
+  };
 
   return (
-    <Screen title="Analytics" subtitle="Month-over-month context">
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.metrics}>
-          <MetricTile label="Income" value={formatMoney(analytics.income)} tone="primary" />
-          <MetricTile label="Expenses" value={formatMoney(analytics.expenses)} tone="danger" />
-        </View>
+    <Screen title={t("analytics.title")} subtitle={t("analytics.subtitle")}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInDown.duration(380)} style={styles.metrics}>
+          <MetricTile label={t("analytics.income")} value={money(analytics.income)} icon="cash-multiple" tone="primary" />
+          <MetricTile label={t("analytics.expenses")} value={money(analytics.expenses)} icon="trending-down" tone="accent" />
+        </Animated.View>
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Income vs Expenses</Text>
+        <Animated.View
+          entering={FadeInDown.delay(60).duration(380)}
+          style={[styles.panel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
+        >
+          <Text style={[styles.panelTitle, { color: theme.colors.text }]}>{t("analytics.incomeVsExpenses")}</Text>
           <BarChart
             width={chartWidth}
             height={220}
             fromZero
-            yAxisLabel="$"
+            yAxisLabel=""
             yAxisSuffix=""
-            data={{
-              labels: ["Income", "Spent", "Bills"],
-              datasets: [{ data: [analytics.income, analytics.expenses, analytics.billsDue] }]
-            }}
+            withInnerLines
+            data={{ labels: [t("analytics.income"), t("analytics.expenses"), t("analytics.bills")], datasets: [{ data: [analytics.income, analytics.expenses, analytics.billsDue] }] }}
             chartConfig={chartConfig}
             style={styles.chart}
           />
-        </View>
+        </Animated.View>
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Category Mix</Text>
+        <Animated.View
+          entering={FadeInDown.delay(120).duration(380)}
+          style={[styles.panel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
+        >
+          <Text style={[styles.panelTitle, { color: theme.colors.text }]}>{t("analytics.categoryMix")}</Text>
           {pieData.length > 0 ? (
-            <PieChart
-              width={chartWidth}
-              height={210}
-              data={pieData}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="0"
-              chartConfig={chartConfig}
-            />
+            <PieChart width={chartWidth} height={210} data={pieData} accessor="amount" backgroundColor="transparent" paddingLeft="0" chartConfig={chartConfig} />
           ) : (
-            <Text style={styles.empty}>Add expenses to see category trends.</Text>
+            <EmptyState icon="chart-donut" message={t("analytics.addExpenses")} />
           )}
-        </View>
+        </Animated.View>
 
-        <View style={styles.insight}>
-          <Text style={styles.insightLabel}>Contextual comparison</Text>
-          <Text style={styles.insightText}>{comparison}</Text>
-        </View>
+        <Animated.View entering={FadeInDown.delay(170).duration(380)}>
+          <BudgetsSection spentByCategory={analytics.categories} />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[styles.insight, { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning, borderRadius: theme.radii.lg }]}>
+          <Text style={[styles.insightLabel, { color: theme.colors.warning }]}>{t("analytics.comparisonLabel")}</Text>
+          <Text style={[styles.insightText, { color: theme.colors.text }]}>{comparison}</Text>
+        </Animated.View>
       </ScrollView>
     </Screen>
   );
 }
 
-const chartConfig = {
-  backgroundGradientFrom: colors.surface,
-  backgroundGradientTo: colors.surface,
-  color: (opacity = 1) => `rgba(14, 124, 102, ${opacity})`,
-  decimalPlaces: 0,
-  labelColor: () => colors.subtleText,
-  propsForBackgroundLines: {
-    stroke: colors.border
-  }
-};
+function hexToRgba(hex: string, opacity: number) {
+  const value = hex.replace("#", "");
+  const full = value.length === 3 ? value.split("").map((c) => c + c).join("") : value;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
 
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.md,
+    padding: 16,
     paddingBottom: 96
   },
   metrics: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.md
+    gap: 10,
+    marginBottom: 14
   },
   panel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
     borderWidth: 1,
-    marginBottom: spacing.md,
+    marginBottom: 14,
     overflow: "hidden",
-    padding: spacing.md
+    padding: 16
   },
   panelTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: spacing.sm
+    fontSize: 17,
+    fontWeight: "800",
+    marginBottom: 8
   },
   chart: {
-    borderRadius: 8,
-    marginLeft: -spacing.sm
-  },
-  empty: {
-    color: colors.subtleText,
-    paddingVertical: spacing.lg,
-    textAlign: "center"
+    borderRadius: 12,
+    marginLeft: -8
   },
   insight: {
-    backgroundColor: "#FFF7E8",
-    borderColor: "#F2D8A8",
-    borderRadius: 8,
     borderWidth: 1,
-    padding: spacing.md
+    padding: 16
   },
   insightLabel: {
-    color: colors.warning,
+    fontSize: 12,
     fontWeight: "900",
+    letterSpacing: 0.4,
     textTransform: "uppercase"
   },
   insightText: {
-    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 23,
-    marginTop: spacing.xs
+    marginTop: 6
   }
 });

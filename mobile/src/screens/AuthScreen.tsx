@@ -1,11 +1,16 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { Button, Field, SegmentedControl } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
-import { colors, spacing } from "../theme";
+import { useTheme } from "../theme";
+import { useI18n } from "../i18n";
 
 export function AuthScreen() {
+  const theme = useTheme();
+  const { t } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -21,10 +26,9 @@ export function AuthScreen() {
 
   const submit = async () => {
     if (!canSubmit) {
-      setLocalError(mode === "login" ? "Enter your email and at least 8 password characters." : "Enter your name, email, and at least 8 password characters.");
+      setLocalError(mode === "login" ? t("auth.invalidLogin") : t("auth.invalidRegister"));
       return;
     }
-
     setLocalError(undefined);
     try {
       if (mode === "login") {
@@ -33,190 +37,112 @@ export function AuthScreen() {
         await register({ name: name.trim(), email: email.trim(), password });
       }
     } catch {
-      // The store keeps the user-facing backend error.
+      // Store keeps the user-facing backend error.
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
-        <View style={styles.logo}>
-          <MaterialCommunityIcons color="#FFFFFF" name="wallet" size={34} />
-        </View>
-        <Text style={styles.title}>Frictionless Finance</Text>
-        <Text style={styles.subtitle}>Sign in to keep your bills, receipts, vault files, and income saved to your account.</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+            <View style={[styles.logo, { backgroundColor: theme.colors.primary, borderRadius: theme.radii.lg, ...theme.shadow("md") }]}>
+              <MaterialCommunityIcons color={theme.colors.onPrimary} name="wallet" size={34} />
+            </View>
+            <Text style={[styles.title, { color: theme.colors.text }]}>{t("auth.appName")}</Text>
+            <Text style={[styles.subtitle, { color: theme.colors.subtleText }]}>{t("auth.tagline")}</Text>
+          </Animated.View>
 
-        <View style={styles.segmented}>
-          <Pressable style={[styles.segment, mode === "login" && styles.segmentActive]} onPress={() => setMode("login")}>
-            <Text style={[styles.segmentText, mode === "login" && styles.segmentTextActive]}>Login</Text>
-          </Pressable>
-          <Pressable style={[styles.segment, mode === "register" && styles.segmentActive]} onPress={() => setMode("register")}>
-            <Text style={[styles.segmentText, mode === "register" && styles.segmentTextActive]}>Create</Text>
-          </Pressable>
-        </View>
+          <Animated.View entering={FadeInDown.delay(120).duration(500)} style={styles.form}>
+            <SegmentedControl
+              segments={[
+                { value: "login", label: t("auth.login") },
+                { value: "register", label: t("auth.create") }
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
 
-        {mode === "register" ? (
-          <>
-            <Text style={styles.label}>Name</Text>
-            <TextInput autoCapitalize="words" autoComplete="name" onChangeText={setName} style={styles.input} value={name} />
-          </>
-        ) : null}
+            {mode === "register" ? <Field label={t("auth.name")} autoCapitalize="words" autoComplete="name" value={name} onChangeText={setName} /> : null}
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          style={styles.input}
-          value={email}
-        />
+            <Field label={t("auth.email")} autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} />
 
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.passwordRow}>
-          <TextInput
-            autoCapitalize="none"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            style={styles.passwordInput}
-            value={password}
-          />
-          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((current) => !current)}>
-            <MaterialCommunityIcons color={colors.muted} name={showPassword ? "eye-off" : "eye"} size={22} />
-          </TouchableOpacity>
-        </View>
+            <View>
+              <Field
+                label={t("auth.password")}
+                autoCapitalize="none"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                style={styles.passwordInput}
+              />
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((current) => !current)}>
+                <MaterialCommunityIcons color={theme.colors.muted} name={showPassword ? "eye-off" : "eye"} size={22} />
+              </TouchableOpacity>
+            </View>
 
-        {localError || authError ? <Text style={styles.error}>{localError ?? authError}</Text> : null}
+            {localError || authError ? <Text style={[styles.error, { color: theme.colors.danger }]}>{localError ?? authError}</Text> : null}
 
-        <TouchableOpacity disabled={loading} style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={submit}>
-          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>{mode === "login" ? "Login" : "Create Account"}</Text>}
-        </TouchableOpacity>
+            <Button label={mode === "login" ? t("auth.loginCta") : t("auth.createCta")} onPress={submit} loading={loading} style={styles.submit} />
+          </Animated.View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  keyboard: {
-    flex: 1,
+  safeArea: { flex: 1 },
+  flex: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: spacing.lg
+    padding: 24
+  },
+  hero: {
+    alignItems: "center",
+    marginBottom: 28
   },
   logo: {
     alignItems: "center",
-    alignSelf: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    height: 64,
+    height: 68,
     justifyContent: "center",
-    marginBottom: spacing.md,
-    width: 64
+    marginBottom: 16,
+    width: 68
   },
   title: {
-    color: colors.text,
-    fontSize: 29,
+    fontSize: 28,
     fontWeight: "900",
     textAlign: "center"
   },
   subtitle: {
-    color: colors.subtleText,
     fontSize: 15,
+    fontWeight: "600",
     lineHeight: 21,
-    marginBottom: spacing.lg,
-    marginTop: spacing.sm,
+    marginTop: 8,
     textAlign: "center"
   },
-  segmented: {
-    backgroundColor: "#E9EEEC",
-    borderRadius: 8,
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    padding: spacing.xs
-  },
-  segment: {
-    alignItems: "center",
-    borderRadius: 7,
-    flex: 1,
-    minHeight: 42,
-    justifyContent: "center"
-  },
-  segmentActive: {
-    backgroundColor: colors.surface
-  },
-  segmentText: {
-    color: colors.muted,
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  segmentTextActive: {
-    color: colors.text
-  },
-  label: {
-    color: colors.subtleText,
-    fontSize: 12,
-    fontWeight: "900",
-    marginBottom: spacing.xs,
-    marginTop: spacing.md,
-    textTransform: "uppercase"
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 17,
-    minHeight: 54,
-    paddingHorizontal: spacing.md
-  },
-  passwordRow: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    minHeight: 54
+  form: {
+    gap: 16
   },
   passwordInput: {
-    color: colors.text,
-    flex: 1,
-    fontSize: 17,
-    minHeight: 54,
-    paddingHorizontal: spacing.md
+    paddingRight: 52
   },
   eyeButton: {
     alignItems: "center",
+    bottom: 0,
     height: 54,
     justifyContent: "center",
-    width: 54
+    position: "absolute",
+    right: 0,
+    width: 52
   },
   error: {
-    color: colors.danger,
     fontSize: 13,
-    fontWeight: "700",
-    marginTop: spacing.md
+    fontWeight: "700"
   },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    justifyContent: "center",
-    marginTop: spacing.lg,
-    minHeight: 56
-  },
-  primaryButtonDisabled: {
-    opacity: 0.7
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "900"
+  submit: {
+    marginTop: 4
   }
 });

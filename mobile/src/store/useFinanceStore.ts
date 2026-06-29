@@ -28,6 +28,8 @@ type FinanceState = {
   markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
   editBillAmount: (bill: BillOccurrence, amount: number) => Promise<void>;
   completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
+  deleteTransaction: (transaction: Transaction) => Promise<void>;
+  deleteBill: (bill: BillOccurrence) => Promise<void>;
   recordSnap: (uri: string) => Promise<void>;
   addVaultDocument: (input: { uri: string; name: string; mimeType?: string; title: string; category: import("../types").VaultCategory }) => Promise<void>;
   refreshVault: () => Promise<void>;
@@ -260,6 +262,28 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       notes: input.notes,
       status: "CLEARED"
     });
+    await get().load();
+  },
+
+  deleteTransaction: async (transaction) => {
+    const user = requireUser(get().user);
+    set({ transactions: get().transactions.filter((item) => item.id !== transaction.id) });
+    // Optimistic-only for not-yet-synced local records (no server id).
+    if (!transaction.id.startsWith("local-") && !transaction.id.startsWith("snap-")) {
+      await api.deleteTransaction({ userId: user.id, transactionId: transaction.id });
+    }
+    await get().load();
+  },
+
+  deleteBill: async (bill) => {
+    const user = requireUser(get().user);
+    set({
+      bills: {
+        unpaid: get().bills.unpaid.filter((item) => item.id !== bill.id),
+        settled: get().bills.settled.filter((item) => item.id !== bill.id)
+      }
+    });
+    await api.deleteBillTemplate({ userId: user.id, templateId: bill.billTemplate.id });
     await get().load();
   },
 
