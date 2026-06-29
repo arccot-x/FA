@@ -17,12 +17,12 @@ import { useMoney } from "../utils/CurrencyProvider";
 import { summariseIncome } from "../utils/income";
 import { categoryIcon } from "../constants/options";
 import type { ExpenseCategory, Transaction } from "../types";
-import { toNumber } from "../utils/money";
+import { addMonths, currentMonthKey, formatMonthLabel, monthKeyOf, toNumber } from "../utils/money";
 
 export function HomeScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const money = useMoney();
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -30,7 +30,7 @@ export function HomeScreen() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
 
-  const { user, load, loading, offline, incomeCycle, bills, transactions, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction } =
+  const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction } =
     useFinanceStore();
 
   useFocusEffect(
@@ -39,12 +39,21 @@ export function HomeScreen() {
     }, [load])
   );
 
+  const thisMonth = currentMonthKey();
+  const isCurrentMonth = selectedMonth === thisMonth;
+
+  // Transactions that belong to the month being viewed.
+  const monthTransactions = useMemo(
+    () => transactions.filter((item) => monthKeyOf(item.occurredAt) === selectedMonth),
+    [transactions, selectedMonth]
+  );
+
   const summary = useMemo(() => {
     const expected = toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200;
-    const spent = transactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const spent = monthTransactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
     const billsDue = bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0);
     return summariseIncome({ expected, received: toNumber(incomeCycle?.actual), spent, billsDue, paydayDay: user?.paydayDay ?? 1 });
-  }, [incomeCycle, bills.unpaid, transactions, user?.defaultMonthlyIncome, user?.paydayDay]);
+  }, [incomeCycle, bills.unpaid, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
 
   const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => {
     const isPending = item.status === "PENDING_DETAILS";
@@ -83,7 +92,7 @@ export function HomeScreen() {
     >
       <FlatList
         contentContainerStyle={styles.content}
-        data={transactions.slice(0, 8)}
+        data={monthTransactions.slice(0, 8)}
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         renderItem={renderTransaction}
@@ -91,6 +100,24 @@ export function HomeScreen() {
         ListEmptyComponent={<Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("home.noActivity")}</Text>}
         ListHeaderComponent={
           <View style={styles.headerArea}>
+            <View style={[styles.monthRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
+              <PressableScale onPress={() => void setMonth(addMonths(selectedMonth, -1))} style={styles.monthBtn} accessibilityLabel="Previous month">
+                <MaterialCommunityIcons color={theme.colors.text} name="chevron-left" size={24} />
+              </PressableScale>
+              <PressableScale style={styles.monthLabelWrap} onPress={() => !isCurrentMonth && void setMonth(thisMonth)}>
+                <Text style={[styles.monthLabel, { color: theme.colors.text }]}>{formatMonthLabel(selectedMonth, locale)}</Text>
+                {!isCurrentMonth ? <MaterialCommunityIcons color={theme.colors.primary} name="restore" size={15} /> : null}
+              </PressableScale>
+              <PressableScale
+                disabled={isCurrentMonth}
+                onPress={() => void setMonth(addMonths(selectedMonth, 1))}
+                style={[styles.monthBtn, isCurrentMonth && styles.monthBtnDisabled]}
+                accessibilityLabel="Next month"
+              >
+                <MaterialCommunityIcons color={theme.colors.text} name="chevron-right" size={24} />
+              </PressableScale>
+            </View>
+
             <Animated.View entering={FadeInDown.duration(420)}>
               <Gradient colors={theme.colors.heroGradient} borderRadius={theme.radii.xl} style={[styles.hero, theme.shadow("md")]}>
                 <View style={styles.heroLeft}>
@@ -197,6 +224,32 @@ const styles = StyleSheet.create({
   headerArea: {
     gap: 16,
     marginBottom: 4
+  },
+  monthRow: {
+    alignItems: "center",
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 6,
+    paddingVertical: 4
+  },
+  monthBtn: {
+    alignItems: "center",
+    height: 38,
+    justifyContent: "center",
+    width: 38
+  },
+  monthBtnDisabled: {
+    opacity: 0.3
+  },
+  monthLabelWrap: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6
+  },
+  monthLabel: {
+    fontSize: 15,
+    fontWeight: "800"
   },
   hero: {
     flexDirection: "row",

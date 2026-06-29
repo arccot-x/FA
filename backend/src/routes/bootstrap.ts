@@ -35,7 +35,9 @@ bootstrapRouter.get(
         where: { userId: req.params.userId },
         include: { attachments: true },
         orderBy: { occurredAt: "desc" },
-        take: 25
+        // Load several months of history so the dashboard month switcher and the
+        // Insights trend chart have data; the client filters by the selected month.
+        take: 300
       }),
       prisma.vaultDocument.findMany({
         where: { userId: req.params.userId },

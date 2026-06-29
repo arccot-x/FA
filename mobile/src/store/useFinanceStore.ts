@@ -16,6 +16,8 @@ type FinanceState = {
   authReady: boolean;
   offline: boolean;
   authError?: string;
+  selectedMonth: string;
+  setMonth: (month: string) => Promise<void>;
   restoreSession: () => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
@@ -65,6 +67,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   loading: false,
   authReady: false,
   offline: false,
+  selectedMonth: currentMonthKey(),
+
+  setMonth: async (month) => {
+    set({ selectedMonth: month });
+    await get().load();
+  },
 
   restoreSession: async () => {
     set({ loading: true, authError: undefined });
@@ -132,7 +140,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       vaultDocuments: [],
       loading: false,
       offline: false,
-      authError: undefined
+      authError: undefined,
+      selectedMonth: currentMonthKey()
     });
   },
 
@@ -145,7 +154,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     set({ loading: true });
     try {
-      const data = await api.bootstrap(user.id, currentMonthKey());
+      const data = await api.bootstrap(user.id, get().selectedMonth);
       set({
         user: data.user,
         incomeCycle: data.incomeCycle,
@@ -205,7 +214,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         : { id: "local-income", expected, actual, cycleMonth: new Date().toISOString() }
     });
 
-    await api.saveIncomeCycle({ userId: user.id, month: currentMonthKey(), expected, actual });
+    await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual });
     await get().load();
   },
 
