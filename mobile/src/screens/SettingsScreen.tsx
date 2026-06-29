@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
-import { Button, Chip, Field, PressableScale, SegmentedControl } from "../components/ui";
+import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { useFinanceStore } from "../store/useFinanceStore";
@@ -14,7 +14,6 @@ import type { Locale } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
 import { useReminders } from "../utils/RemindersProvider";
 import { useAppLock } from "../utils/AppLockProvider";
-import { useAi } from "../utils/AiProvider";
 import { exportTransactionsCsv } from "../utils/exportData";
 import { CURRENCIES } from "../utils/money";
 import type { CurrencyCode } from "../utils/money";
@@ -29,7 +28,6 @@ export function SettingsScreen() {
   const { currency, setCurrency } = useCurrency();
   const { enabled: remindersEnabled, daysBefore, setEnabled: setRemindersEnabled, setDaysBefore } = useReminders();
   const { enabled: lockEnabled, setEnabled: setLockEnabled } = useAppLock();
-  const { enabled: aiEnabled, apiKey, setEnabled: setAiEnabled, setApiKey } = useAi();
   const { user, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle, transactions, deleteAccount } = useFinanceStore();
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
@@ -151,29 +149,6 @@ export function SettingsScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
-        </Section>
-
-        {/* AI receipt scan */}
-        <Section delay={185} title={t("ai.title")} theme={theme}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("ai.enable")}</Text>
-              <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("ai.hint")}</Text>
-            </View>
-            <Switch value={aiEnabled} onValueChange={setAiEnabled} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
-          </View>
-          {aiEnabled ? (
-            <Field
-              label={t("ai.apiKey")}
-              placeholder={t("ai.apiKeyPlaceholder")}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-              value={apiKey}
-              onChangeText={setApiKey}
-              containerStyle={styles.aiKey}
-            />
-          ) : null}
         </Section>
 
         {/* Data */}

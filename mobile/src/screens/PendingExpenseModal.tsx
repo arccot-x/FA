@@ -5,7 +5,7 @@ import { ModalSheet, Field, Button, Chip, ImageViewerModal, PressableScale } fro
 import { expenseCategoryOptions } from "../constants/options";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
-import { useAi } from "../utils/AiProvider";
+import { useFinanceStore } from "../store/useFinanceStore";
 import { scanReceipt } from "../utils/ai";
 import { toNumber } from "../utils/money";
 import type { ExpenseCategory, Transaction } from "../types";
@@ -20,7 +20,7 @@ type PendingExpenseModalProps = {
 export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }: PendingExpenseModalProps) {
   const { t } = useI18n();
   const theme = useTheme();
-  const ai = useAi();
+  const userId = useFinanceStore((state) => state.user?.id);
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [notes, setNotes] = useState("");
@@ -45,14 +45,10 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
   }, [transaction]);
 
   const runScan = async (auto: boolean) => {
-    if (!receiptUri) return;
-    if (!ai.ready) {
-      if (!auto) Alert.alert(t("ai.title"), t("ai.needKey"));
-      return;
-    }
+    if (!receiptUri || !userId) return;
     setScanning(true);
     try {
-      const result = await scanReceipt(receiptUri, ai.apiKey);
+      const result = await scanReceipt(receiptUri, userId);
       // Fill empty fields only, so we don't clobber anything the user typed.
       if (result.amount && !Number(amount)) setAmount(String(result.amount));
       if (result.merchant && !merchant.trim()) setMerchant(result.merchant);
@@ -64,15 +60,15 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
     }
   };
 
-  // Auto-scan once when a pending receipt with an image opens and AI is configured.
+  // Auto-scan once when a pending receipt with an image opens.
   useEffect(() => {
-    if (transaction && isPending && receiptUri && ai.ready && scannedFor.current !== transaction.id) {
+    if (transaction && isPending && receiptUri && userId && scannedFor.current !== transaction.id) {
       scannedFor.current = transaction.id;
       void runScan(true);
     }
     if (!transaction) scannedFor.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transaction, receiptUri, ai.ready]);
+  }, [transaction, receiptUri, userId]);
 
   const save = async () => {
     const parsedAmount = Number(amount);
@@ -105,16 +101,14 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
                 <Text style={styles.receiptBadgeText}>{t("transaction.receipt")}</Text>
               </View>
             </PressableScale>
-            {ai.enabled ? (
-              <Button
-                label={scanning ? t("ai.scanning") : t("ai.scan")}
-                icon="robot-outline"
-                variant="secondary"
-                loading={scanning}
-                onPress={() => void runScan(false)}
-                style={styles.scanButton}
-              />
-            ) : null}
+            <Button
+              label={scanning ? t("ai.scanning") : t("ai.scan")}
+              icon="robot-outline"
+              variant="secondary"
+              loading={scanning}
+              onPress={() => void runScan(false)}
+              style={styles.scanButton}
+            />
           </View>
         ) : null}
 

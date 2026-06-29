@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { aiRouter } from "./ai";
 import { authRouter } from "./auth";
 import { billsRouter } from "./bills";
 import { bootstrapRouter } from "./bootstrap";
@@ -11,6 +12,7 @@ import { vaultRouter } from "./vault";
 export const router = Router();
 
 router.use("/auth", authRouter);
+router.use("/ai", aiRouter);
 router.use("/bootstrap", bootstrapRouter);
 router.use("/users", usersRouter);
 router.use("/income", incomeRouter);

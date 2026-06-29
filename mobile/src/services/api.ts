@@ -168,6 +168,13 @@ export async function deleteAccount(input: { userId: string }) {
   await request<void>(`/users/${input.userId}`, { method: "DELETE" });
 }
 
+export async function scanReceiptRemote(userId: string, image: string) {
+  return request<{ amount?: number; merchant?: string; category?: ExpenseCategory }>(`/ai/scan/${userId}`, {
+    method: "POST",
+    body: JSON.stringify({ image })
+  });
+}
+
 export async function addBillTemplate(input: {
   userId: string;
   name: string;

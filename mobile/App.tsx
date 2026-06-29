@@ -33,7 +33,6 @@ import { BudgetProvider } from "./src/utils/BudgetProvider";
 import { GoalsProvider } from "./src/utils/GoalsProvider";
 import { RemindersProvider } from "./src/utils/RemindersProvider";
 import { AppLockProvider } from "./src/utils/AppLockProvider";
-import { AiProvider } from "./src/utils/AiProvider";
 import { getPref, PREF_KEYS, setPref } from "./src/utils/prefs";
 import { toNumber } from "./src/utils/money";
 
@@ -161,13 +160,11 @@ export default function App() {
             <CurrencyProvider>
               <BudgetProvider>
                 <GoalsProvider>
-                  <AiProvider>
-                    <RemindersProvider>
-                      <AppLockProvider>
-                        <Root />
-                      </AppLockProvider>
-                    </RemindersProvider>
-                  </AiProvider>
+                  <RemindersProvider>
+                    <AppLockProvider>
+                      <Root />
+                    </AppLockProvider>
+                  </RemindersProvider>
                 </GoalsProvider>
               </BudgetProvider>
             </CurrencyProvider>
