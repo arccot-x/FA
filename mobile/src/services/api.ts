@@ -191,8 +191,8 @@ export async function createFamily(name: string) {
   return request<{ family: Family }>("/families", { method: "POST", body: JSON.stringify({ name }) });
 }
 
-export async function inviteFamilyMember(familyId: string, userId: string) {
-  return request(`/families/${familyId}/invite`, { method: "POST", body: JSON.stringify({ userId }) });
+export async function inviteFamilyMember(familyId: string, userId: string, memberLimit?: number) {
+  return request(`/families/${familyId}/invite`, { method: "POST", body: JSON.stringify({ userId, memberLimit }) });
 }
 
 export async function acceptFamilyInvite(memberId: string) {
@@ -332,4 +332,8 @@ export async function uploadVaultDocument(params: {
   } as unknown as Blob);
 
   return uploadForm<{ document: VaultDocument }>(`/uploads/vault/${params.userId}`, form);
+}
+
+export async function deleteVaultDocument(input: { userId: string; documentId: string }) {
+  await request<void>(`/vault/${input.userId}/${input.documentId}`, { method: "DELETE" });
 }

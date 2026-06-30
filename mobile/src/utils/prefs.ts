@@ -28,5 +28,6 @@ export const PREF_KEYS = {
   remindersDays: "pref-reminders-days",
   onboarded: "pref-onboarded",
   aiEnabled: "pref-ai-enabled",
-  aiKey: "pref-ai-key"
+  aiKey: "pref-ai-key",
+  subscription: "pref-subscription"
 } as const;

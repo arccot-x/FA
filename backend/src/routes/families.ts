@@ -90,7 +90,7 @@ familiesRouter.post(
   "/:familyId/invite",
   asyncHandler(async (req, res) => {
     const userId = getAuthUserId(req);
-    const { userId: inviteeId } = z.object({ userId: z.string().min(1) }).parse(req.body);
+    const { userId: inviteeId, memberLimit } = z.object({ userId: z.string().min(1), memberLimit: z.number().int().min(1).max(7).optional() }).parse(req.body);
     const family = await prisma.family.findUniqueOrThrow({ where: { id: req.params.familyId } });
 
     if (family.ownerId !== userId) {
@@ -110,6 +110,12 @@ familiesRouter.post(
     });
     if (existing) {
       throw new Error(existing.status === MemberStatus.ACTIVE ? "That person is already a member." : "That person is already invited.");
+    }
+
+    const limit = memberLimit ?? 7;
+    const members = await prisma.familyMember.count({ where: { familyId: family.id } });
+    if (members >= limit) {
+      throw new Error("Your subscription limit has been reached.");
     }
 
     await prisma.familyMember.create({ data: { familyId: family.id, userId: inviteeId, role: FamilyRole.MEMBER, status: MemberStatus.PENDING } });

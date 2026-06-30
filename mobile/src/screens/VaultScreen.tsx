@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Linking, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, Linking, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
 import { Button, Chip, Field, IconButton, ImageViewerModal, ModalSheet, PressableScale } from "../components/ui";
@@ -17,7 +17,7 @@ const folderOrder: VaultCategory[] = ["LEASE", "TAX", "INSURANCE", "BANKING", "W
 export function VaultScreen() {
   const theme = useTheme();
   const { t } = useI18n();
-  const { vaultDocuments, load, loading, addVaultDocument } = useFinanceStore();
+  const { vaultDocuments, load, loading, addVaultDocument, deleteVaultDocument } = useFinanceStore();
   const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [title, setTitle] = useState("");
@@ -65,27 +65,37 @@ export function VaultScreen() {
     }
   };
 
+  const confirmDelete = (document: VaultDocument) => {
+    Alert.alert(t("vault.deleteTitle"), t("vault.deleteMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => void deleteVaultDocument(document) }
+    ]);
+  };
+
   const renderDocument = (item: VaultDocument) => {
     const isImage = item.mimeType.startsWith("image");
     return (
-      <PressableScale key={item.id} scaleTo={0.98} onPress={() => openDocument(item)} style={[styles.documentRow, { borderTopColor: theme.colors.border }]}>
-        {isImage ? (
-          <Image source={{ uri: item.url }} style={[styles.docThumb, { borderRadius: theme.radii.md, backgroundColor: theme.colors.surfaceAlt }]} resizeMode="cover" />
-        ) : (
-          <View style={[styles.docIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.md }]}>
-            <MaterialCommunityIcons color={theme.colors.primary} name="file-pdf-box" size={24} />
+      <View key={item.id} style={[styles.documentRow, { borderTopColor: theme.colors.border }]}>
+        <PressableScale scaleTo={0.98} onPress={() => openDocument(item)} style={styles.documentOpenRow}>
+          {isImage ? (
+            <Image source={{ uri: item.url }} style={[styles.docThumb, { borderRadius: theme.radii.md, backgroundColor: theme.colors.surfaceAlt }]} resizeMode="cover" />
+          ) : (
+            <View style={[styles.docIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.md }]}>
+              <MaterialCommunityIcons color={theme.colors.primary} name="file-pdf-box" size={24} />
+            </View>
+          )}
+          <View style={styles.docBody}>
+            <Text numberOfLines={1} style={[styles.docTitle, { color: theme.colors.text }]}>
+              {item.title}
+            </Text>
+            <Text numberOfLines={1} style={[styles.docMeta, { color: theme.colors.subtleText }]}>
+              {item.fileName}
+            </Text>
           </View>
-        )}
-        <View style={styles.docBody}>
-          <Text numberOfLines={1} style={[styles.docTitle, { color: theme.colors.text }]}>
-            {item.title}
-          </Text>
-          <Text numberOfLines={1} style={[styles.docMeta, { color: theme.colors.subtleText }]}>
-            {item.fileName}
-          </Text>
-        </View>
-        <MaterialCommunityIcons color={theme.colors.muted} name={isImage ? "eye" : "open-in-new"} size={18} />
-      </PressableScale>
+          <MaterialCommunityIcons color={theme.colors.muted} name={isImage ? "eye" : "open-in-new"} size={18} />
+        </PressableScale>
+        <IconButton icon="trash-can-outline" tone="danger" onPress={() => confirmDelete(item)} accessibilityLabel={t("vault.delete")} />
+      </View>
     );
   };
 
@@ -207,6 +217,13 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 14,
     paddingTop: 14
+  },
+  documentOpenRow: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 12,
+    minWidth: 0
   },
   docIcon: {
     alignItems: "center",

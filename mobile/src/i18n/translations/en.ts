@@ -108,7 +108,9 @@ export const en = {
     deleteMessage: "This removes the family and its shared money for everyone.",
     invited: "Invite sent.",
     copyId: "Copy ID",
-    copied: "ID copied"
+    copied: "ID copied",
+    planLimit: "{plan} allows up to {count} people.",
+    limitReached: "Your subscription limit has been reached."
   },
   quickAdd: {
     title: "Quick add",
@@ -203,7 +205,23 @@ export const en = {
     folder: "Folder",
     upload: "Upload to vault",
     noDocuments: "No documents",
-    documentCount: "{count} files"
+    documentCount: "{count} files",
+    delete: "Delete document",
+    deleteTitle: "Delete document?",
+    deleteMessage: "This file will be permanently removed."
+  },
+  subscription: {
+    title: "Subscription",
+    testMode: "Test subscription",
+    activePlan: "{plan} active",
+    memberLimit: "Up to {count} people",
+    cardEnding: "Card ending {last4}",
+    name: "Billing name",
+    email: "Billing email",
+    cardNumber: "Card number",
+    hint: "Test mode accepts any billing info and card number.",
+    save: "Save subscription",
+    saved: "Subscription saved."
   },
   analytics: {
     title: "Insights",

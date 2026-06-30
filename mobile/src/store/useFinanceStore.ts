@@ -26,7 +26,7 @@ type FinanceState = {
   house: HouseData;
   loadFamily: () => Promise<void>;
   createFamily: (name: string) => Promise<void>;
-  inviteFamilyMember: (userId: string) => Promise<void>;
+  inviteFamilyMember: (userId: string, memberLimit?: number) => Promise<void>;
   acceptInvite: (memberId: string) => Promise<void>;
   declineInvite: (memberId: string) => Promise<void>;
   leaveFamily: () => Promise<void>;
@@ -55,6 +55,7 @@ type FinanceState = {
   deleteBill: (bill: BillOccurrence) => Promise<void>;
   recordSnap: (uri: string) => Promise<void>;
   addVaultDocument: (input: { uri: string; name: string; mimeType?: string; title: string; category: import("../types").VaultCategory }) => Promise<void>;
+  deleteVaultDocument: (document: VaultDocument) => Promise<void>;
   refreshVault: () => Promise<void>;
 };
 
@@ -78,6 +79,14 @@ async function storeSession(token: string) {
 async function clearSession() {
   api.setAuthToken(undefined);
   await SecureStore.deleteItemAsync(tokenKey);
+}
+
+function isLocalId(id: string) {
+  return id.startsWith("local-") || id.startsWith("snap-");
+}
+
+function markOfflineMutation(set: (state: Partial<FinanceState>) => void) {
+  set({ offline: true, loading: false });
 }
 
 export const useFinanceStore = create<FinanceState>((set, get) => ({
@@ -123,10 +132,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     await get().loadFamily();
   },
 
-  inviteFamilyMember: async (userId) => {
+  inviteFamilyMember: async (userId, memberLimit) => {
     const family = get().family;
     if (!family) throw new Error("Create a family first.");
-    await api.inviteFamilyMember(family.id, userId);
+    await api.inviteFamilyMember(family.id, userId, memberLimit);
     await get().loadFamily();
   },
 
@@ -303,8 +312,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     };
 
     set({ transactions: [optimistic, ...get().transactions] });
-    await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : scope, familyId });
-    await get().load();
+    try {
+      await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : scope, familyId });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   saveIncomeSettings: async (input) => {
@@ -322,8 +335,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         : { id: "local-income", expected: input.defaultMonthlyIncome, cycleMonth: new Date().toISOString() }
     });
 
-    await api.updateIncomeSettings({ userId: user.id, ...input });
-    await get().load();
+    try {
+      await api.updateIncomeSettings({ userId: user.id, ...input });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   saveExpectedIncome: async (expected, actual, houseAllocation) => {
@@ -335,8 +352,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         : { id: "local-income", expected, actual, houseAllocation, cycleMonth: new Date().toISOString() }
     });
 
-    await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual, houseAllocation });
-    await get().load();
+    try {
+      await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual, houseAllocation });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   changePassword: async (input) => {
@@ -363,8 +384,31 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   addBill: async (input) => {
     const user = requireUser(get().user);
     const familyId = input.scope === "HOUSE" ? get().family?.id ?? null : null;
-    await api.addBillTemplate({ userId: user.id, ...input, familyId });
-    await get().load();
+    const optimistic: BillOccurrence = {
+      id: `local-bill-${Date.now()}`,
+      amount: input.defaultAmount,
+      dueDate: `${get().selectedMonth}-${String(input.dueDay).padStart(2, "0")}T00:00:00.000Z`,
+      status: "UNPAID",
+      paidAt: null,
+      billTemplate: {
+        id: `local-template-${Date.now()}`,
+        name: input.name,
+        category: input.category,
+        defaultAmount: input.defaultAmount,
+        dueDay: input.dueDay,
+        icon: input.icon,
+        autopay: input.autopay ?? false,
+        scope: input.scope ?? "PERSONAL",
+        familyId
+      }
+    };
+    set({ bills: { ...get().bills, unpaid: [optimistic, ...get().bills.unpaid] } });
+    try {
+      await api.addBillTemplate({ userId: user.id, ...input, familyId });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   markBill: async (bill, status) => {
@@ -471,28 +515,42 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         : item;
 
     set({ transactions: get().transactions.map(replace) });
-    await api.updateTransaction({
-      userId: user.id,
-      transactionId: transaction.id,
-      amount: input.amount,
-      category: input.category,
-      merchant: input.merchant,
-      notes: input.notes,
-      status: "CLEARED",
-      scope,
-      familyId
-    });
-    await get().load();
+    if (isLocalId(transaction.id)) {
+      markOfflineMutation(set);
+      return;
+    }
+    try {
+      await api.updateTransaction({
+        userId: user.id,
+        transactionId: transaction.id,
+        amount: input.amount,
+        category: input.category,
+        merchant: input.merchant,
+        notes: input.notes,
+        status: "CLEARED",
+        scope,
+        familyId
+      });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   deleteTransaction: async (transaction) => {
     const user = requireUser(get().user);
     set({ transactions: get().transactions.filter((item) => item.id !== transaction.id) });
     // Optimistic-only for not-yet-synced local records (no server id).
-    if (!transaction.id.startsWith("local-") && !transaction.id.startsWith("snap-")) {
-      await api.deleteTransaction({ userId: user.id, transactionId: transaction.id });
+    if (!isLocalId(transaction.id)) {
+      try {
+        await api.deleteTransaction({ userId: user.id, transactionId: transaction.id });
+        await get().load();
+      } catch {
+        markOfflineMutation(set);
+      }
+      return;
     }
-    await get().load();
+    markOfflineMutation(set);
   },
 
   deleteBill: async (bill) => {
@@ -503,6 +561,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         settled: get().bills.settled.filter((item) => item.id !== bill.id)
       }
     });
+    if (isLocalId(bill.id) || isLocalId(bill.billTemplate.id)) {
+      markOfflineMutation(set);
+      return;
+    }
     await api.deleteBillTemplate({ userId: user.id, templateId: bill.billTemplate.id });
     await get().load();
   },
@@ -521,8 +583,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     };
 
     set({ transactions: [optimistic, ...get().transactions] });
-    await api.uploadSnapExpense({ userId: user.id, uri });
-    await get().load();
+    try {
+      await api.uploadSnapExpense({ userId: user.id, uri });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   addVaultDocument: async (input) => {
@@ -538,8 +604,27 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     };
 
     set({ vaultDocuments: [optimistic, ...get().vaultDocuments] });
-    await api.uploadVaultDocument({ userId: user.id, ...input });
-    await get().load();
+    try {
+      await api.uploadVaultDocument({ userId: user.id, ...input });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
+  },
+
+  deleteVaultDocument: async (document) => {
+    const user = requireUser(get().user);
+    set({ vaultDocuments: get().vaultDocuments.filter((item) => item.id !== document.id) });
+    if (isLocalId(document.id)) {
+      markOfflineMutation(set);
+      return;
+    }
+    try {
+      await api.deleteVaultDocument({ userId: user.id, documentId: document.id });
+      await get().load();
+    } catch {
+      markOfflineMutation(set);
+    }
   },
 
   refreshVault: async () => {

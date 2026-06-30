@@ -110,7 +110,9 @@ export const ar: Translations = {
     deleteMessage: "هذا يزيل العائلة وأموالها المشتركة للجميع.",
     invited: "تم إرسال الدعوة.",
     copyId: "نسخ المعرّف",
-    copied: "تم نسخ المعرّف"
+    copied: "تم نسخ المعرّف",
+    planLimit: "{plan} allows up to {count} people.",
+    limitReached: "Your subscription limit has been reached."
   },
   quickAdd: {
     title: "إضافة سريعة",
@@ -205,7 +207,23 @@ export const ar: Translations = {
     folder: "المجلد",
     upload: "رفع إلى الخزنة",
     noDocuments: "لا مستندات",
-    documentCount: "{count} ملف"
+    documentCount: "{count} ملف",
+    delete: "Delete document",
+    deleteTitle: "Delete document?",
+    deleteMessage: "This file will be permanently removed."
+  },
+  subscription: {
+    title: "Subscription",
+    testMode: "Test subscription",
+    activePlan: "{plan} active",
+    memberLimit: "Up to {count} people",
+    cardEnding: "Card ending {last4}",
+    name: "Billing name",
+    email: "Billing email",
+    cardNumber: "Card number",
+    hint: "Test mode accepts any billing info and card number.",
+    save: "Save subscription",
+    saved: "Subscription saved."
   },
   analytics: {
     title: "التحليلات",

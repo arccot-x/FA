@@ -18,3 +18,15 @@ vaultRouter.get(
     res.json(documents);
   })
 );
+
+vaultRouter.delete(
+  "/:userId/:documentId",
+  asyncHandler(async (req, res) => {
+    requireUserAccess(req, req.params.userId);
+    await prisma.vaultDocument.delete({
+      where: { id: req.params.documentId, userId: req.params.userId }
+    });
+
+    res.status(204).send();
+  })
+);

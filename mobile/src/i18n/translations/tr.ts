@@ -110,7 +110,9 @@ export const tr: Translations = {
     deleteMessage: "Bu, aileyi ve herkesin ortak parasını kaldırır.",
     invited: "Davet gönderildi.",
     copyId: "Kimliği kopyala",
-    copied: "Kimlik kopyalandı"
+    copied: "Kimlik kopyalandı",
+    planLimit: "{plan} allows up to {count} people.",
+    limitReached: "Your subscription limit has been reached."
   },
   quickAdd: {
     title: "Hızlı ekle",
@@ -205,7 +207,23 @@ export const tr: Translations = {
     folder: "Klasör",
     upload: "Kasaya yükle",
     noDocuments: "Belge yok",
-    documentCount: "{count} dosya"
+    documentCount: "{count} dosya",
+    delete: "Delete document",
+    deleteTitle: "Delete document?",
+    deleteMessage: "This file will be permanently removed."
+  },
+  subscription: {
+    title: "Subscription",
+    testMode: "Test subscription",
+    activePlan: "{plan} active",
+    memberLimit: "Up to {count} people",
+    cardEnding: "Card ending {last4}",
+    name: "Billing name",
+    email: "Billing email",
+    cardNumber: "Card number",
+    hint: "Test mode accepts any billing info and card number.",
+    save: "Save subscription",
+    saved: "Subscription saved."
   },
   analytics: {
     title: "Analiz",

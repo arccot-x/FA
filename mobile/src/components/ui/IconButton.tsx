@@ -5,7 +5,7 @@ import { PressableScale } from "./PressableScale";
 import { useTheme } from "../../theme";
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
-type Tone = "surface" | "primary" | "accent";
+type Tone = "surface" | "primary" | "accent" | "danger";
 
 type IconButtonProps = {
   icon: IconName;
@@ -22,7 +22,8 @@ export function IconButton({ icon, onPress, tone = "surface", size = 46, accessi
   const tones: Record<Tone, { bg: string; fg: string; border: string }> = {
     surface: { bg: theme.colors.surface, fg: theme.colors.text, border: theme.colors.border },
     primary: { bg: theme.colors.primary, fg: theme.colors.onPrimary, border: theme.colors.primary },
-    accent: { bg: theme.colors.accent, fg: "#FFFFFF", border: theme.colors.accent }
+    accent: { bg: theme.colors.accent, fg: "#FFFFFF", border: theme.colors.accent },
+    danger: { bg: theme.colors.dangerSoft, fg: theme.colors.danger, border: theme.colors.dangerSoft }
   };
 
   const palette = tones[tone];

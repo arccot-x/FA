@@ -138,7 +138,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
         </View>
         <Field label={t("pending.notes")} multiline value={notes} onChangeText={setNotes} style={styles.notes} />
         <Button label={t("pending.saveExpense")} icon="check" onPress={save} loading={saving} style={styles.save} />
-        {onDelete && transaction && !transaction.id.startsWith("snap-") ? (
+        {onDelete && transaction ? (
           <Button label={t("transaction.delete")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} />
         ) : null}
       </View>

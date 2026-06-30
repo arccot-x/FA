@@ -1,9 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
-import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
+import { Button, Chip, Field, PressableScale, SegmentedControl } from "../components/ui";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { FamilySection } from "./FamilySection";
@@ -19,6 +19,8 @@ import { exportTransactionsCsv } from "../utils/exportData";
 import { CURRENCIES } from "../utils/money";
 import type { CurrencyCode } from "../utils/money";
 import { toNumber } from "../utils/money";
+import { SUBSCRIPTION_PLANS, useSubscription } from "../utils/SubscriptionProvider";
+import type { SubscriptionPlanId } from "../utils/SubscriptionProvider";
 
 const APP_VERSION = "0.2.0";
 
@@ -119,6 +121,11 @@ export function SettingsScreen() {
           <FamilySection />
         </Animated.View>
 
+        {/* Subscription */}
+        <Section delay={145} title={t("subscription.title")} theme={theme}>
+          <SubscriptionSection />
+        </Section>
+
         {/* Notifications */}
         <Section delay={150} title={t("settings.notifications")} theme={theme}>
           <View style={styles.switchRow}>
@@ -216,6 +223,84 @@ export function SettingsScreen() {
   );
 }
 
+function SubscriptionSection() {
+  const theme = useTheme();
+  const { t } = useI18n();
+  const { subscription, plan, saveSubscription } = useSubscription();
+  const [planId, setPlanId] = useState<SubscriptionPlanId>(subscription.planId);
+  const [name, setName] = useState(subscription.name);
+  const [email, setEmail] = useState(subscription.email);
+  const [cardNumber, setCardNumber] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPlanId(subscription.planId);
+    setName(subscription.name);
+    setEmail(subscription.email);
+  }, [subscription]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await saveSubscription({ planId, name, email, cardNumber });
+      setCardNumber("");
+      Alert.alert(t("subscription.title"), t("subscription.saved"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={styles.subscription}>
+      <View style={[styles.subscriptionStatus, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
+        <MaterialCommunityIcons color={subscription.active ? theme.colors.success : theme.colors.muted} name={subscription.active ? "check-decagram" : "credit-card-outline"} size={24} />
+        <View style={styles.switchText}>
+          <Text style={[styles.switchTitle, { color: theme.colors.text }]}>
+            {subscription.active ? t("subscription.activePlan", { plan: plan.name }) : t("subscription.testMode")}
+          </Text>
+          <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>
+            {t("subscription.memberLimit", { count: plan.memberLimit })}
+            {subscription.cardLast4 ? ` · ${t("subscription.cardEnding", { last4: subscription.cardLast4 })}` : ""}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.planList}>
+        {SUBSCRIPTION_PLANS.map((item) => {
+          const selected = item.id === planId;
+          return (
+            <PressableScale
+              key={item.id}
+              onPress={() => setPlanId(item.id)}
+              scaleTo={0.98}
+              style={[
+                styles.planRow,
+                {
+                  backgroundColor: selected ? theme.colors.primarySoft : theme.colors.surface,
+                  borderColor: selected ? theme.colors.primary : theme.colors.border,
+                  borderRadius: theme.radii.md
+                }
+              ]}
+            >
+              <View style={styles.planBody}>
+                <Text style={[styles.planName, { color: selected ? theme.colors.primary : theme.colors.text }]}>{item.name}</Text>
+                <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("subscription.memberLimit", { count: item.memberLimit })}</Text>
+              </View>
+              <Text style={[styles.planPrice, { color: selected ? theme.colors.primary : theme.colors.text }]}>${item.price}</Text>
+            </PressableScale>
+          );
+        })}
+      </View>
+
+      <Field label={t("subscription.name")} value={name} onChangeText={setName} placeholder="Test Customer" />
+      <Field label={t("subscription.email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="test@example.com" />
+      <Field label={t("subscription.cardNumber")} value={cardNumber} onChangeText={setCardNumber} keyboardType="number-pad" placeholder="4242 4242 4242 4242" />
+      <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("subscription.hint")}</Text>
+      <Button label={t("subscription.save")} icon="credit-card-check-outline" loading={saving} onPress={() => void save()} />
+    </View>
+  );
+}
+
 function Section({ title, children, theme, delay }: { title: string; children: React.ReactNode; theme: ReturnType<typeof useTheme>; delay: number }) {
   return (
     <Animated.View entering={FadeInDown.delay(delay).duration(360)} style={styles.section}>
@@ -301,6 +386,39 @@ const styles = StyleSheet.create({
   },
   aiKey: {
     marginTop: 12
+  },
+  subscription: {
+    gap: 12
+  },
+  subscriptionStatus: {
+    alignItems: "center",
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    padding: 14
+  },
+  planList: {
+    gap: 8
+  },
+  planRow: {
+    alignItems: "center",
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    minHeight: 68,
+    padding: 14
+  },
+  planBody: {
+    flex: 1,
+    minWidth: 0
+  },
+  planName: {
+    fontSize: 16,
+    fontWeight: "900"
+  },
+  planPrice: {
+    fontSize: 22,
+    fontWeight: "900"
   },
   account: {
     alignItems: "center",

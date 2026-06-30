@@ -5,11 +5,13 @@ import { Button, Field } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
+import { useSubscription } from "../utils/SubscriptionProvider";
 
 export function FamilySection() {
   const theme = useTheme();
   const { t } = useI18n();
   const { user, family, familyInvites, createFamily, inviteFamilyMember, acceptInvite, declineInvite, leaveFamily, deleteFamily } = useFinanceStore();
+  const { plan } = useSubscription();
 
   const [name, setName] = useState("");
   const [inviteId, setInviteId] = useState("");
@@ -27,6 +29,8 @@ export function FamilySection() {
   };
 
   const isOwner = family?.role === "OWNER";
+  const memberCount = family?.members.length ?? 1;
+  const canInvite = memberCount < plan.memberLimit;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
@@ -67,6 +71,9 @@ export function FamilySection() {
           </View>
 
           <Text style={[styles.label, { color: theme.colors.subtleText, marginTop: 12 }]}>{t("family.members")}</Text>
+          <Text style={[styles.hint, { color: theme.colors.muted }]}>
+            {t("family.planLimit", { plan: plan.name, count: plan.memberLimit })}
+          </Text>
           {family.members.map((m) => (
             <View key={m.userId} style={styles.memberRow}>
               <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
@@ -86,16 +93,21 @@ export function FamilySection() {
           {isOwner ? (
             <View style={styles.block}>
               <Field label={t("family.inviteId")} placeholder={t("family.invitePlaceholder")} autoCapitalize="none" autoCorrect={false} value={inviteId} onChangeText={setInviteId} />
+              {!canInvite ? <Text style={[styles.hint, { color: theme.colors.danger }]}>{t("family.limitReached")}</Text> : null}
               <Button
                 label={t("family.invite")}
                 icon="account-plus"
                 onPress={() =>
                   void run(async () => {
-                    await inviteFamilyMember(inviteId.trim());
+                    if (!canInvite) {
+                      throw new Error(t("family.limitReached"));
+                    }
+                    await inviteFamilyMember(inviteId.trim(), plan.memberLimit);
                     setInviteId("");
                     Alert.alert(t("family.title"), t("family.invited"));
                   })
                 }
+                disabled={!canInvite || !inviteId.trim()}
                 loading={busy}
                 style={styles.spaced}
               />
