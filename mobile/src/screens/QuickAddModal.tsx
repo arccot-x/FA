@@ -4,20 +4,21 @@ import { Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
-import { Button, Chip, IconButton, PressableScale } from "../components/ui";
+import { Button, Chip, IconButton, PressableScale, SegmentedControl } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
+import { useFinanceStore } from "../store/useFinanceStore";
 import { CURRENCIES } from "../utils/money";
-import type { ExpenseCategory } from "../types";
+import type { ExpenseCategory, TransactionScope } from "../types";
 
 type QuickAddModalProps = {
   visible: boolean;
   onClose: () => void;
   onCamera: () => void;
   onAttachImage: (uri: string) => void;
-  onSubmit: (amount: number, category: ExpenseCategory) => Promise<void>;
+  onSubmit: (amount: number, category: ExpenseCategory, scope: TransactionScope) => Promise<void>;
 };
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"];
@@ -32,8 +33,10 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
   const { currency } = useCurrency();
   const symbol = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "$";
 
+  const inFamily = useFinanceStore((state) => !!state.family);
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
+  const [scope, setScope] = useState<TransactionScope>("PERSONAL");
   const [saving, setSaving] = useState(false);
 
   const pickFromGallery = async () => {
@@ -53,9 +56,10 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
     if (!parsed) return;
     setSaving(true);
     try {
-      await onSubmit(parsed, category);
+      await onSubmit(parsed, category, inFamily ? scope : "PERSONAL");
       setAmount("");
       setCategory("GROCERIES");
+      setScope("PERSONAL");
       onClose();
     } finally {
       setSaving(false);
@@ -78,6 +82,19 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
           {symbol}
           {amount || "0"}
         </Animated.Text>
+
+        {inFamily ? (
+          <View style={styles.scopeRow}>
+            <SegmentedControl
+              segments={[
+                { value: "PERSONAL", label: t("scope.personal") },
+                { value: "HOUSE", label: t("scope.house") }
+              ]}
+              value={scope}
+              onChange={(value) => setScope(value as TransactionScope)}
+            />
+          </View>
+        ) : null}
 
         <View style={styles.categoryGrid}>
           {quickCategories.map((item) => (
@@ -133,6 +150,9 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     marginVertical: 16,
     textAlign: "center"
+  },
+  scopeRow: {
+    marginBottom: 12
   },
   categoryGrid: {
     flexDirection: "row",

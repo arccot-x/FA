@@ -73,6 +73,21 @@ enum DocumentMimeGroup {
   OTHER
 }
 
+enum FamilyRole {
+  OWNER
+  MEMBER
+}
+
+enum MemberStatus {
+  PENDING
+  ACTIVE
+}
+
+enum TransactionScope {
+  PERSONAL
+  HOUSE
+}
+
 model User {
   id                    String             @id @default(cuid())
   email                 String             @unique
@@ -98,6 +113,7 @@ model IncomeCycle {
   sourceType IncomeSourceType @default(DEFAULT)
   expected   Decimal          @db.Decimal(12, 2)
   actual     Decimal?         @db.Decimal(12, 2)
+  houseAllocation Decimal?    @db.Decimal(12, 2)
   notes      String?
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
@@ -155,6 +171,8 @@ model Transaction {
   category    ExpenseCategory?
   merchant    String?
   notes       String?
+  scope       TransactionScope   @default(PERSONAL)
+  familyId    String?
   occurredAt  DateTime           @default(now())
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -163,6 +181,7 @@ model Transaction {
 
   @@index([userId, occurredAt])
   @@index([userId, status])
+  @@index([familyId, scope, occurredAt])
 }
 
 model Attachment {
@@ -204,4 +223,29 @@ model VaultDocument {
   attachments Attachment[]
 
   @@index([userId, category, createdAt])
+}
+
+model Family {
+  id        String         @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  members   FamilyMember[]
+
+  @@index([ownerId])
+}
+
+model FamilyMember {
+  id        String       @id @default(cuid())
+  familyId  String
+  userId    String
+  role      FamilyRole   @default(MEMBER)
+  status    MemberStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  family    Family       @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([userId, status])
 }

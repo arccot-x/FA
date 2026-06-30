@@ -4,17 +4,19 @@ import { ModalSheet, Field, Button, Chip } from "../components/ui";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
+import { useFinanceStore } from "../store/useFinanceStore";
 
 type IncomeEditorModalProps = {
   visible: boolean;
   userIncome: number;
   currentExpected: number;
   currentActual: number;
+  currentHouseAllocation?: number;
   paydayDay: number;
   variableIncomeEnabled: boolean;
   onClose: () => void;
   onSaveSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
-  onSaveExpected: (expected: number, actual?: number) => Promise<void>;
+  onSaveExpected: (expected: number, actual?: number, houseAllocation?: number) => Promise<void>;
 };
 
 const PRESETS = [1500, 2500, 4000, 6000];
@@ -24,6 +26,7 @@ export function IncomeEditorModal({
   userIncome,
   currentExpected,
   currentActual,
+  currentHouseAllocation = 0,
   paydayDay,
   variableIncomeEnabled,
   onClose,
@@ -33,12 +36,14 @@ export function IncomeEditorModal({
   const theme = useTheme();
   const { t } = useI18n();
   const money = useMoney();
+  const inFamily = useFinanceStore((state) => !!state.family);
 
   const [income, setIncome] = useState(String(userIncome || ""));
   const [expected, setExpected] = useState(String(currentExpected || userIncome || ""));
   const [payday, setPayday] = useState(String(paydayDay || 1));
   const [variable, setVariable] = useState(variableIncomeEnabled);
   const [received, setReceived] = useState(currentActual > 0);
+  const [houseAllocation, setHouseAllocation] = useState(String(currentHouseAllocation || ""));
   const [saving, setSaving] = useState(false);
 
   // Re-seed fields when the modal opens with fresh data.
@@ -49,18 +54,20 @@ export function IncomeEditorModal({
       setPayday(String(paydayDay || 1));
       setVariable(variableIncomeEnabled);
       setReceived(currentActual > 0);
+      setHouseAllocation(String(currentHouseAllocation || ""));
     }
-  }, [visible, userIncome, currentExpected, currentActual, paydayDay, variableIncomeEnabled]);
+  }, [visible, userIncome, currentExpected, currentActual, currentHouseAllocation, paydayDay, variableIncomeEnabled]);
 
   const save = async () => {
     const parsedIncome = Math.max(0, Number(income) || 0);
     const parsedExpected = variable ? Math.max(0, Number(expected) || parsedIncome) : parsedIncome;
     const parsedPayday = Math.min(31, Math.max(1, Math.round(Number(payday) || 1)));
+    const parsedHouse = inFamily ? Math.min(parsedExpected, Math.max(0, Number(houseAllocation) || 0)) : 0;
     setSaving(true);
     try {
       await onSaveSettings({ defaultMonthlyIncome: parsedIncome, paydayDay: parsedPayday, variableIncomeEnabled: variable });
-      // Mark the cycle as received (actual = expected) or clear it (0).
-      await onSaveExpected(parsedExpected, received ? parsedExpected : 0);
+      // Mark the cycle as received (actual = expected) or clear it (0); set house split.
+      await onSaveExpected(parsedExpected, received ? parsedExpected : 0, parsedHouse);
       onClose();
     } finally {
       setSaving(false);
@@ -89,6 +96,13 @@ export function IncomeEditorModal({
         </View>
 
         {variable ? <Field label={t("income.expectedThisMonth")} keyboardType="decimal-pad" value={expected} onChangeText={setExpected} /> : null}
+
+        {inFamily ? (
+          <View>
+            <Field label={t("income.houseAllocation")} keyboardType="decimal-pad" value={houseAllocation} onChangeText={setHouseAllocation} />
+            <Text style={[styles.houseHint, { color: theme.colors.subtleText }]}>{t("income.houseAllocationHint")}</Text>
+          </View>
+        ) : null}
 
         <View style={[styles.switchRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
           <View style={styles.switchText}>
@@ -135,5 +149,10 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: 8
+  },
+  houseHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 6
   }
 });

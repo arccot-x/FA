@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { FamilySection } from "./FamilySection";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme, useThemeContext } from "../theme";
 import type { ThemeMode } from "../theme";
@@ -109,6 +110,11 @@ export function SettingsScreen() {
           </View>
         </Section>
 
+        {/* Family */}
+        <Animated.View entering={FadeInDown.delay(140).duration(360)} style={styles.section}>
+          <FamilySection />
+        </Animated.View>
+
         {/* Notifications */}
         <Section delay={150} title={t("settings.notifications")} theme={theme}>
           <View style={styles.switchRow}>
@@ -193,6 +199,7 @@ export function SettingsScreen() {
         userIncome={toNumber(user?.defaultMonthlyIncome)}
         currentExpected={toNumber(incomeCycle?.expected)}
         currentActual={toNumber(incomeCycle?.actual)}
+        currentHouseAllocation={toNumber(incomeCycle?.houseAllocation)}
         paydayDay={user?.paydayDay ?? 1}
         variableIncomeEnabled={user?.variableIncomeEnabled ?? false}
         onClose={() => setIncomeOpen(false)}

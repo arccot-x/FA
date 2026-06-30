@@ -1,5 +1,5 @@
 import { API_URL, DEMO_USER_EMAIL } from "../config";
-import type { BootstrapPayload, ExpenseCategory, Transaction, User, VaultCategory, VaultDocument } from "../types";
+import type { BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, Transaction, TransactionScope, User, VaultCategory, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
 let authToken: string | undefined;
@@ -88,6 +88,8 @@ export async function addTransaction(input: {
   category: ExpenseCategory;
   merchant?: string;
   notes?: string;
+  scope?: TransactionScope;
+  familyId?: string | null;
 }) {
   return request(`/transactions/${input.userId}`, {
     method: "POST",
@@ -95,7 +97,9 @@ export async function addTransaction(input: {
       amount: input.amount,
       category: input.category,
       merchant: input.merchant,
-      notes: input.notes
+      notes: input.notes,
+      scope: input.scope,
+      familyId: input.familyId
     })
   });
 }
@@ -108,6 +112,8 @@ export async function updateTransaction(input: {
   merchant?: string;
   notes?: string;
   status?: "CLEARED" | "PENDING_DETAILS";
+  scope?: TransactionScope;
+  familyId?: string | null;
 }) {
   return request<Transaction>(`/transactions/${input.userId}/${input.transactionId}`, {
     method: "PATCH",
@@ -116,7 +122,9 @@ export async function updateTransaction(input: {
       category: input.category,
       merchant: input.merchant,
       notes: input.notes,
-      status: input.status
+      status: input.status,
+      scope: input.scope,
+      familyId: input.familyId
     })
   });
 }
@@ -145,16 +153,50 @@ export async function updateIncomeSettings(input: {
   });
 }
 
-export async function saveIncomeCycle(input: { userId: string; month: string; expected: number; actual?: number }) {
+export async function saveIncomeCycle(input: { userId: string; month: string; expected: number; actual?: number; houseAllocation?: number }) {
   return request(`/income/${input.userId}/cycles`, {
     method: "POST",
     body: JSON.stringify({
       month: input.month,
       expected: input.expected,
       actual: input.actual,
+      houseAllocation: input.houseAllocation,
       sourceType: "VARIABLE_EXPECTED"
     })
   });
+}
+
+// --- Family ---
+export async function getMyFamily() {
+  return request<{ family: Family | null; invites: FamilyInvite[] }>("/families/me");
+}
+
+export async function createFamily(name: string) {
+  return request<{ family: Family }>("/families", { method: "POST", body: JSON.stringify({ name }) });
+}
+
+export async function inviteFamilyMember(familyId: string, userId: string) {
+  return request(`/families/${familyId}/invite`, { method: "POST", body: JSON.stringify({ userId }) });
+}
+
+export async function acceptFamilyInvite(memberId: string) {
+  return request(`/families/invites/${memberId}/accept`, { method: "POST" });
+}
+
+export async function declineFamilyInvite(memberId: string) {
+  await request<void>(`/families/invites/${memberId}/decline`, { method: "POST" });
+}
+
+export async function leaveFamily(familyId: string, memberUserId: string) {
+  await request<void>(`/families/${familyId}/members/${memberUserId}`, { method: "DELETE" });
+}
+
+export async function deleteFamily(familyId: string) {
+  await request<void>(`/families/${familyId}`, { method: "DELETE" });
+}
+
+export async function getHouse(month: string) {
+  return request<HouseData>(`/families/house?month=${month}`);
 }
 
 export async function changePassword(input: { userId: string; currentPassword: string; newPassword: string }) {
@@ -169,7 +211,7 @@ export async function deleteAccount(input: { userId: string }) {
 }
 
 export async function scanReceiptRemote(userId: string, image: string) {
-  return request<{ amount?: number; merchant?: string; category?: ExpenseCategory }>(`/ai/scan/${userId}`, {
+  return request<{ amount?: number; merchant?: string; category?: ExpenseCategory; items?: string }>(`/ai/scan/${userId}`, {
     method: "POST",
     body: JSON.stringify({ image })
   });

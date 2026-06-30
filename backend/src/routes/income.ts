@@ -59,6 +59,7 @@ const cycleSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/),
   expected: z.number().nonnegative(),
   actual: z.number().nonnegative().optional(),
+  houseAllocation: z.number().nonnegative().optional(),
   sourceType: z.nativeEnum(IncomeSourceType).default(IncomeSourceType.VARIABLE_EXPECTED),
   notes: z.string().optional()
 });
@@ -79,6 +80,7 @@ incomeRouter.post(
       update: {
         expected: input.expected,
         actual: input.actual,
+        houseAllocation: input.houseAllocation,
         sourceType: input.sourceType,
         notes: input.notes
       },
@@ -87,6 +89,7 @@ incomeRouter.post(
         cycleMonth,
         expected: input.expected,
         actual: input.actual,
+        houseAllocation: input.houseAllocation,
         sourceType: input.sourceType,
         notes: input.notes
       }

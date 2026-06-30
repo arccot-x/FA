@@ -35,7 +35,34 @@ export type IncomeCycle = {
   id: string;
   expected: string | number;
   actual?: string | number | null;
+  houseAllocation?: string | number | null;
   cycleMonth: string;
+};
+
+export type TransactionScope = "PERSONAL" | "HOUSE";
+
+export type FamilyRole = "OWNER" | "MEMBER";
+
+export type FamilyMemberInfo = {
+  userId: string;
+  role: FamilyRole;
+  status: "PENDING" | "ACTIVE";
+  name: string;
+  email: string;
+};
+
+export type Family = {
+  id: string;
+  name: string;
+  ownerId: string;
+  role: FamilyRole;
+  members: FamilyMemberInfo[];
+};
+
+export type FamilyInvite = {
+  memberId: string;
+  familyId: string;
+  familyName: string;
 };
 
 export type BillOccurrence = {
@@ -68,8 +95,18 @@ export type Transaction = {
   notes?: string | null;
   status: "CLEARED" | "PENDING_DETAILS";
   source: "MANUAL" | "SNAP_SAVE" | "IMPORT";
+  scope?: TransactionScope;
+  familyId?: string | null;
   occurredAt: string;
   attachments: Attachment[];
+  spenderName?: string;
+};
+
+export type HouseData = {
+  pool: number;
+  spent: number;
+  balance: number;
+  transactions: Transaction[];
 };
 
 export type VaultDocument = {

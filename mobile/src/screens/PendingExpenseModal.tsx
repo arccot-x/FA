@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ModalSheet, Field, Button, Chip, ImageViewerModal, PressableScale } from "../components/ui";
+import { ModalSheet, Field, Button, Chip, ImageViewerModal, PressableScale, SegmentedControl } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { scanReceipt } from "../utils/ai";
 import { toNumber } from "../utils/money";
-import type { ExpenseCategory, Transaction } from "../types";
+import type { ExpenseCategory, Transaction, TransactionScope } from "../types";
 
 type PendingExpenseModalProps = {
   transaction: Transaction | null;
   onClose: () => void;
-  onSubmit: (input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
+  onSubmit: (input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string; scope?: TransactionScope }) => Promise<void>;
   onDelete?: (transaction: Transaction) => Promise<void>;
 };
 
@@ -21,10 +21,12 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
   const { t } = useI18n();
   const theme = useTheme();
   const userId = useFinanceStore((state) => state.user?.id);
+  const inFamily = useFinanceStore((state) => !!state.family);
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [notes, setNotes] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
+  const [scope, setScope] = useState<TransactionScope>("PERSONAL");
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -41,6 +43,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
       setMerchant(transaction.merchant ?? "");
       setNotes(transaction.notes ?? "");
       setCategory(transaction.category ?? "GROCERIES");
+      setScope(transaction.scope ?? "PERSONAL");
     }
   }, [transaction]);
 
@@ -53,6 +56,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
       if (result.amount && !Number(amount)) setAmount(String(result.amount));
       if (result.merchant && !merchant.trim()) setMerchant(result.merchant);
       if (result.category) setCategory(result.category);
+      if (result.items && !notes.trim()) setNotes(result.items);
     } catch {
       if (!auto) Alert.alert(t("ai.title"), t("ai.failed"));
     } finally {
@@ -75,7 +79,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
     if (!parsedAmount) return;
     setSaving(true);
     try {
-      await onSubmit({ amount: parsedAmount, category, merchant: merchant.trim() || undefined, notes: notes.trim() || undefined });
+      await onSubmit({ amount: parsedAmount, category, merchant: merchant.trim() || undefined, notes: notes.trim() || undefined, scope: inFamily ? scope : "PERSONAL" });
     } finally {
       setSaving(false);
     }
@@ -113,6 +117,16 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
         ) : null}
 
         <Field label={t("common.amount")} autoFocus={isPending && !receiptUri} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+        {inFamily ? (
+          <SegmentedControl
+            segments={[
+              { value: "PERSONAL", label: t("scope.personal") },
+              { value: "HOUSE", label: t("scope.house") }
+            ]}
+            value={scope}
+            onChange={(value) => setScope(value as TransactionScope)}
+          />
+        ) : null}
         <Field label={t("pending.merchant")} value={merchant} onChangeText={setMerchant} />
         <View>
           <Text style={[styles.label, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>

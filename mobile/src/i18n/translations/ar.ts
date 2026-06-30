@@ -69,7 +69,41 @@ export const ar: Translations = {
     save: "حفظ الدخل",
     presets: "مبالغ سريعة",
     receivedBadge: "مستلَم",
-    expectedBadge: "متوقع"
+    expectedBadge: "متوقع",
+    houseAllocation: "مخصص للمنزل",
+    houseAllocationHint: "كم من دخلك يذهب إلى صندوق المنزل المشترك هذا الشهر."
+  },
+  scope: {
+    personal: "شخصي",
+    house: "المنزل",
+    myMoney: "أموالي",
+    houseMoney: "أموال المنزل"
+  },
+  family: {
+    title: "العائلة",
+    yourId: "معرّف حسابك",
+    yourIdHint: "شارك هذا المعرّف ليتمكن مالك العائلة من إضافتك.",
+    create: "إنشاء عائلة",
+    namePlaceholder: "اسم العائلة",
+    members: "الأعضاء",
+    owner: "المالك",
+    member: "عضو",
+    pending: "قيد الانتظار",
+    inviteId: "أضف عضواً بالمعرّف",
+    invitePlaceholder: "الصق معرّف حساب العضو",
+    invite: "إرسال دعوة",
+    invitesTitle: "الدعوات",
+    invitedToFamily: "أنت مدعو إلى {name}",
+    accept: "قبول",
+    decline: "رفض",
+    leave: "مغادرة العائلة",
+    delete: "حذف العائلة",
+    leaveTitle: "مغادرة هذه العائلة؟",
+    deleteTitle: "حذف هذه العائلة؟",
+    deleteMessage: "هذا يزيل العائلة وأموالها المشتركة للجميع.",
+    invited: "تم إرسال الدعوة.",
+    copyId: "نسخ المعرّف",
+    copied: "تم نسخ المعرّف"
   },
   quickAdd: {
     title: "إضافة سريعة",

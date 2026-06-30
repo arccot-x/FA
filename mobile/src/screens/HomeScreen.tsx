@@ -5,7 +5,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
-import { AnimatedNumber, Gradient, IconButton, ProgressRing, PressableScale } from "../components/ui";
+import { AnimatedNumber, Gradient, IconButton, ProgressRing, PressableScale, SegmentedControl } from "../components/ui";
 import { QuickAddModal } from "./QuickAddModal";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { PendingExpenseModal } from "./PendingExpenseModal";
@@ -29,9 +29,13 @@ export function HomeScreen() {
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
+  const [view, setView] = useState<"personal" | "house">("personal");
 
-  const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
+  const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
+
+  const inFamily = !!family;
+  const houseView = inFamily && view === "house";
 
   useFocusEffect(
     useCallback(() => {
@@ -42,22 +46,31 @@ export function HomeScreen() {
   const thisMonth = currentMonthKey();
   const isCurrentMonth = selectedMonth === thisMonth;
 
-  // Transactions that belong to the month being viewed.
+  // Personal transactions for the month being viewed (exclude house ones).
   const monthTransactions = useMemo(
-    () => transactions.filter((item) => monthKeyOf(item.occurredAt) === selectedMonth),
+    () => transactions.filter((item) => monthKeyOf(item.occurredAt) === selectedMonth && item.scope !== "HOUSE"),
     [transactions, selectedMonth]
   );
 
   // Money still owed this month (shown as an upcoming figure, not deducted from safe-to-spend).
   const billsUnpaid = useMemo(() => bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0), [bills.unpaid]);
 
+  const houseAllocation = toNumber(incomeCycle?.houseAllocation);
+
   const summary = useMemo(() => {
-    const expected = toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200;
+    // Personal income = the part of income NOT allocated to the house pool.
+    const expected = Math.max(0, (toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200) - houseAllocation);
+    const actual = toNumber(incomeCycle?.actual);
+    const received = actual > 0 ? Math.max(0, actual - houseAllocation) : 0;
     const spent = monthTransactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
     // Only bills you've actually PAID reduce what's still usable; unpaid bills are upcoming.
     const billsPaid = bills.settled.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    return summariseIncome({ expected, received: toNumber(incomeCycle?.actual), spent, billsDue: billsPaid, paydayDay: user?.paydayDay ?? 1 });
-  }, [incomeCycle, bills.settled, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
+    return summariseIncome({ expected, received, spent, billsDue: billsPaid, paydayDay: user?.paydayDay ?? 1 });
+  }, [incomeCycle, houseAllocation, bills.settled, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
+
+  // The data shown depends on the selected money view.
+  const listData = houseView ? house.transactions : monthTransactions;
+  const houseUsedRatio = house.pool > 0 ? Math.min(1, house.spent / house.pool) : 0;
 
   const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => {
     const isPending = item.status === "PENDING_DETAILS";
@@ -77,7 +90,7 @@ export function HomeScreen() {
               {item.merchant ?? (isPending ? t("home.pendingReceipt") : t(`category.${item.category ?? "OTHER"}` as never))}
             </Text>
             <Text style={[styles.txMeta, { color: theme.colors.subtleText }]}>
-              {isPending ? t("home.tapToAdd") : t(`category.${item.category ?? "OTHER"}` as never)}
+              {isPending ? t("home.tapToAdd") : houseView && item.spenderName ? item.spenderName : t(`category.${item.category ?? "OTHER"}` as never)}
             </Text>
           </View>
           <Text style={[styles.txAmount, { color: isPending ? theme.colors.warning : theme.colors.text }]}>{item.amount ? money(item.amount) : "—"}</Text>
@@ -96,7 +109,7 @@ export function HomeScreen() {
     >
       <FlatList
         contentContainerStyle={styles.content}
-        data={monthTransactions.slice(0, 8)}
+        data={listData.slice(0, 8)}
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         renderItem={renderTransaction}
@@ -122,40 +135,84 @@ export function HomeScreen() {
               </PressableScale>
             </View>
 
+            {inFamily ? (
+              <SegmentedControl
+                segments={[
+                  { value: "personal", label: t("scope.myMoney") },
+                  { value: "house", label: t("scope.houseMoney") }
+                ]}
+                value={view}
+                onChange={(value) => setView(value as "personal" | "house")}
+              />
+            ) : null}
+
             <Animated.View entering={FadeInDown.duration(420)}>
               <Gradient colors={theme.colors.heroGradient} borderRadius={theme.radii.xl} style={[styles.hero, theme.shadow("md")]}>
-                <View style={styles.heroLeft}>
-                  <View style={styles.heroLabelRow}>
-                    <Text style={styles.heroLabel}>{t("home.safeToSpend")}</Text>
-                    <View style={styles.heroBadge}>
-                      <Text style={styles.heroBadgeText}>{summary.isReceived ? t("income.receivedBadge") : t("income.expectedBadge")}</Text>
+                {houseView ? (
+                  <>
+                    <View style={styles.heroLeft}>
+                      <View style={styles.heroLabelRow}>
+                        <Text style={styles.heroLabel}>{t("scope.houseMoney")}</Text>
+                      </View>
+                      <AnimatedNumber value={house.balance} format={(v) => money(v)} style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit />
+                      <Text style={styles.heroSub}>
+                        {t("home.income")}: {money(house.pool)}
+                        {"  ·  "}
+                        {t("home.spent")}: {money(house.spent)}
+                      </Text>
                     </View>
-                  </View>
-                  <AnimatedNumber value={summary.available} format={(v) => money(v)} style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit />
-                  <Text style={styles.heroSub}>
-                    {t("home.perDay", { amount: money(summary.dailyAllowance) })}
-                    {"  ·  "}
-                    {summary.isPaydayToday ? t("home.paydayToday") : t("home.daysToPayday", { days: summary.daysToPayday })}
-                  </Text>
-                </View>
-                <ProgressRing progress={summary.usedRatio} size={104} strokeWidth={11} color="#FFFFFF" trackColor={theme.colors.trackBg}>
-                  <View style={styles.ringCenter}>
-                    <Text style={styles.ringPercent}>{usedPercent}%</Text>
-                    <Text style={styles.ringHint}>{t("home.usedShort")}</Text>
-                  </View>
-                </ProgressRing>
+                    <ProgressRing progress={houseUsedRatio} size={104} strokeWidth={11} color="#FFFFFF" trackColor={theme.colors.trackBg}>
+                      <View style={styles.ringCenter}>
+                        <Text style={styles.ringPercent}>{Math.round(houseUsedRatio * 100)}%</Text>
+                        <Text style={styles.ringHint}>{t("home.usedShort")}</Text>
+                      </View>
+                    </ProgressRing>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.heroLeft}>
+                      <View style={styles.heroLabelRow}>
+                        <Text style={styles.heroLabel}>{t("home.safeToSpend")}</Text>
+                        <View style={styles.heroBadge}>
+                          <Text style={styles.heroBadgeText}>{summary.isReceived ? t("income.receivedBadge") : t("income.expectedBadge")}</Text>
+                        </View>
+                      </View>
+                      <AnimatedNumber value={summary.available} format={(v) => money(v)} style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit />
+                      <Text style={styles.heroSub}>
+                        {t("home.perDay", { amount: money(summary.dailyAllowance) })}
+                        {"  ·  "}
+                        {summary.isPaydayToday ? t("home.paydayToday") : t("home.daysToPayday", { days: summary.daysToPayday })}
+                      </Text>
+                    </View>
+                    <ProgressRing progress={summary.usedRatio} size={104} strokeWidth={11} color="#FFFFFF" trackColor={theme.colors.trackBg}>
+                      <View style={styles.ringCenter}>
+                        <Text style={styles.ringPercent}>{usedPercent}%</Text>
+                        <Text style={styles.ringHint}>{t("home.usedShort")}</Text>
+                      </View>
+                    </ProgressRing>
+                  </>
+                )}
               </Gradient>
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(80).duration(420)} style={styles.metrics}>
-              <MetricTile label={t("home.income")} value={money(summary.expected)} icon="cash-multiple" tone="primary" />
-              <MetricTile label={t("home.spent")} value={money(summary.spent)} icon="trending-down" tone="accent" />
-              <MetricTile label={t("home.unpaidBills")} value={money(billsUnpaid)} icon="calendar-clock" tone="danger" />
+              {houseView ? (
+                <>
+                  <MetricTile label={t("home.income")} value={money(house.pool)} icon="home-group" tone="primary" />
+                  <MetricTile label={t("home.spent")} value={money(house.spent)} icon="trending-down" tone="accent" />
+                </>
+              ) : (
+                <>
+                  <MetricTile label={t("home.income")} value={money(summary.expected)} icon="cash-multiple" tone="primary" />
+                  <MetricTile label={t("home.spent")} value={money(summary.spent)} icon="trending-down" tone="accent" />
+                  <MetricTile label={t("home.unpaidBills")} value={money(billsUnpaid)} icon="calendar-clock" tone="danger" />
+                </>
+              )}
             </Animated.View>
 
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("home.recentActivity")}</Text>
-              {transactions.length > 0 ? (
+              {listData.length > 0 ? (
                 <PressableScale onPress={() => setActivityOpen(true)} style={styles.seeAll}>
                   <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>{t("activity.seeAll")}</Text>
                   <MaterialCommunityIcons color={theme.colors.primary} name="chevron-right" size={18} />
@@ -193,6 +250,7 @@ export function HomeScreen() {
         userIncome={toNumber(user?.defaultMonthlyIncome)}
         currentExpected={toNumber(incomeCycle?.expected)}
         currentActual={toNumber(incomeCycle?.actual)}
+        currentHouseAllocation={toNumber(incomeCycle?.houseAllocation)}
         paydayDay={user?.paydayDay ?? 1}
         variableIncomeEnabled={user?.variableIncomeEnabled ?? false}
         onClose={() => setIncomeOpen(false)}
@@ -216,7 +274,7 @@ export function HomeScreen() {
 
       <AllActivityModal
         visible={activityOpen}
-        transactions={transactions}
+        transactions={houseView ? house.transactions : transactions.filter((item) => item.scope !== "HOUSE")}
         onClose={() => setActivityOpen(false)}
         onSelect={(tx) => setPendingExpense(tx)}
       />

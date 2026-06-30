@@ -69,7 +69,41 @@ export const tr: Translations = {
     save: "Geliri kaydet",
     presets: "Hızlı tutarlar",
     receivedBadge: "Alındı",
-    expectedBadge: "Beklenen"
+    expectedBadge: "Beklenen",
+    houseAllocation: "Eve ayrılan",
+    houseAllocationHint: "Bu ay gelirinin ne kadarı ortak ev havuzuna gidiyor."
+  },
+  scope: {
+    personal: "Kişisel",
+    house: "Ev",
+    myMoney: "Param",
+    houseMoney: "Ev parası"
+  },
+  family: {
+    title: "Aile",
+    yourId: "Hesap kimliğin",
+    yourIdHint: "Bir aile sahibinin seni eklemesi için bu kimliği paylaş.",
+    create: "Aile oluştur",
+    namePlaceholder: "Aile adı",
+    members: "Üyeler",
+    owner: "Sahip",
+    member: "Üye",
+    pending: "Bekliyor",
+    inviteId: "Kimlikle üye ekle",
+    invitePlaceholder: "Bir üyenin hesap kimliğini yapıştır",
+    invite: "Davet gönder",
+    invitesTitle: "Davetler",
+    invitedToFamily: "{name} ailesine davet edildin",
+    accept: "Kabul et",
+    decline: "Reddet",
+    leave: "Aileden ayrıl",
+    delete: "Aileyi sil",
+    leaveTitle: "Bu aileden ayrılınsın mı?",
+    deleteTitle: "Bu aile silinsin mi?",
+    deleteMessage: "Bu, aileyi ve herkesin ortak parasını kaldırır.",
+    invited: "Davet gönderildi.",
+    copyId: "Kimliği kopyala",
+    copied: "Kimlik kopyalandı"
   },
   quickAdd: {
     title: "Hızlı ekle",

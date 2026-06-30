@@ -6,6 +6,7 @@ export type ReceiptScan = {
   amount?: number;
   merchant?: string;
   category?: ExpenseCategory;
+  items?: string;
 };
 
 function guessMimeType(uri: string): string {

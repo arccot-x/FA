@@ -1,7 +1,8 @@
 import type { Request } from "express";
 import { verifyUserToken } from "../services/auth";
 
-export function requireUserAccess(req: Request, userId: string) {
+/** Returns the authenticated user id from the Bearer token, or throws. */
+export function getAuthUserId(req: Request): string {
   const header = req.header("authorization");
   const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
 
@@ -9,8 +10,11 @@ export function requireUserAccess(req: Request, userId: string) {
     throw new Error("Missing session token.");
   }
 
-  const session = verifyUserToken(token);
-  if (session.userId !== userId) {
+  return verifyUserToken(token).userId;
+}
+
+export function requireUserAccess(req: Request, userId: string) {
+  if (getAuthUserId(req) !== userId) {
     throw new Error("You do not have access to this account.");
   }
 }

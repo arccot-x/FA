@@ -67,7 +67,41 @@ export const en = {
     save: "Save income",
     presets: "Quick amounts",
     receivedBadge: "Received",
-    expectedBadge: "Expected"
+    expectedBadge: "Expected",
+    houseAllocation: "House allocation",
+    houseAllocationHint: "How much of your income goes to the shared house pool this month."
+  },
+  scope: {
+    personal: "Personal",
+    house: "House",
+    myMoney: "My money",
+    houseMoney: "House money"
+  },
+  family: {
+    title: "Family",
+    yourId: "Your account ID",
+    yourIdHint: "Share this ID so a family owner can add you.",
+    create: "Create family",
+    namePlaceholder: "Family name",
+    members: "Members",
+    owner: "Owner",
+    member: "Member",
+    pending: "Pending",
+    inviteId: "Add member by ID",
+    invitePlaceholder: "Paste a member's account ID",
+    invite: "Send invite",
+    invitesTitle: "Invitations",
+    invitedToFamily: "You're invited to {name}",
+    accept: "Accept",
+    decline: "Decline",
+    leave: "Leave family",
+    delete: "Delete family",
+    leaveTitle: "Leave this family?",
+    deleteTitle: "Delete this family?",
+    deleteMessage: "This removes the family and its shared money for everyone.",
+    invited: "Invite sent.",
+    copyId: "Copy ID",
+    copied: "ID copied"
   },
   quickAdd: {
     title: "Quick add",

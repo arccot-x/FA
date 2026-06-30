@@ -70,8 +70,11 @@ aiRouter.post(
                 type: "text",
                 text:
                   "Read this receipt and reply with ONLY a JSON object: " +
-                  '{"amount": number (total paid), "merchant": string, "category": one of ' +
-                  `${CATEGORIES.join(", ")}}. Use OTHER if unsure. No prose, no code fences.`
+                  '{"amount": number (grand total paid), "merchant": string (store/business name), ' +
+                  '"category": one of ' +
+                  `${CATEGORIES.join(", ")} (pick the best fit for what was bought; use OTHER only if truly unclear), ` +
+                  '"items": string (a short comma-separated list of the main items/products visible on the receipt)}. ' +
+                  "No prose, no code fences."
               },
               { type: "image_url", image_url: { url: image } }
             ]
@@ -100,7 +103,8 @@ aiRouter.post(
     res.json({
       amount: Number.isFinite(amountValue) && amountValue > 0 ? amountValue : undefined,
       merchant: typeof parsed.merchant === "string" && parsed.merchant.trim() ? parsed.merchant.trim() : undefined,
-      category
+      category,
+      items: typeof parsed.items === "string" && parsed.items.trim() ? parsed.items.trim() : undefined
     });
   })
 );

@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 import * as api from "../services/api";
-import type { BillOccurrence, BootstrapPayload, ExpenseCategory, IncomeCycle, Transaction, User, VaultDocument } from "../types";
+import type { BillOccurrence, BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, IncomeCycle, Transaction, TransactionScope, User, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
 type BillsState = BootstrapPayload["bills"];
@@ -18,20 +18,30 @@ type FinanceState = {
   authError?: string;
   selectedMonth: string;
   setMonth: (month: string) => Promise<void>;
+  family?: Family | null;
+  familyInvites: FamilyInvite[];
+  house: HouseData;
+  loadFamily: () => Promise<void>;
+  createFamily: (name: string) => Promise<void>;
+  inviteFamilyMember: (userId: string) => Promise<void>;
+  acceptInvite: (memberId: string) => Promise<void>;
+  declineInvite: (memberId: string) => Promise<void>;
+  leaveFamily: () => Promise<void>;
+  deleteFamily: () => Promise<void>;
   restoreSession: () => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   load: () => Promise<void>;
-  addManualExpense: (amount: number, category: ExpenseCategory) => Promise<void>;
+  addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope) => Promise<void>;
   saveIncomeSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
-  saveExpectedIncome: (expected: number, actual?: number) => Promise<void>;
+  saveExpectedIncome: (expected: number, actual?: number, houseAllocation?: number) => Promise<void>;
   changePassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
   addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean }) => Promise<void>;
   markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
   editBillAmount: (bill: BillOccurrence, amount: number, forever?: boolean) => Promise<void>;
-  completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
+  completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string; scope?: TransactionScope }) => Promise<void>;
   deleteTransaction: (transaction: Transaction) => Promise<void>;
   deleteBill: (bill: BillOccurrence) => Promise<void>;
   recordSnap: (uri: string) => Promise<void>;
@@ -41,6 +51,7 @@ type FinanceState = {
 
 const tokenKey = "frictionless-finance-token";
 const emptyBills: BillsState = { unpaid: [], settled: [] };
+const emptyHouse: HouseData = { pool: 0, spent: 0, balance: 0, transactions: [] };
 
 function requireUser(user?: User) {
   if (!user) {
@@ -68,10 +79,73 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   authReady: false,
   offline: false,
   selectedMonth: currentMonthKey(),
+  family: undefined,
+  familyInvites: [],
+  house: emptyHouse,
 
   setMonth: async (month) => {
     set({ selectedMonth: month });
     await get().load();
+  },
+
+  loadFamily: async () => {
+    const user = get().user;
+    if (!user) {
+      set({ family: null, familyInvites: [], house: emptyHouse });
+      return;
+    }
+    try {
+      const { family, invites } = await api.getMyFamily();
+      set({ family, familyInvites: invites });
+      // House money only exists when in a family.
+      if (family) {
+        const house = await api.getHouse(get().selectedMonth);
+        set({ house });
+      } else {
+        set({ house: emptyHouse });
+      }
+    } catch {
+      // Non-fatal: family features just stay hidden if this fails.
+    }
+  },
+
+  createFamily: async (name) => {
+    await api.createFamily(name);
+    await get().loadFamily();
+  },
+
+  inviteFamilyMember: async (userId) => {
+    const family = get().family;
+    if (!family) throw new Error("Create a family first.");
+    await api.inviteFamilyMember(family.id, userId);
+    await get().loadFamily();
+  },
+
+  acceptInvite: async (memberId) => {
+    await api.acceptFamilyInvite(memberId);
+    await get().loadFamily();
+  },
+
+  declineInvite: async (memberId) => {
+    await api.declineFamilyInvite(memberId);
+    await get().loadFamily();
+  },
+
+  leaveFamily: async () => {
+    const user = get().user;
+    const family = get().family;
+    if (!user || !family) return;
+    await api.leaveFamily(family.id, user.id);
+    set({ family: null, house: emptyHouse });
+    await get().loadFamily();
+  },
+
+  deleteFamily: async () => {
+    const family = get().family;
+    if (!family) return;
+    await api.deleteFamily(family.id);
+    set({ family: null, house: emptyHouse });
+    await get().loadFamily();
   },
 
   restoreSession: async () => {
@@ -141,7 +215,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       loading: false,
       offline: false,
       authError: undefined,
-      selectedMonth: currentMonthKey()
+      selectedMonth: currentMonthKey(),
+      family: null,
+      familyInvites: [],
+      house: emptyHouse
     });
   },
 
@@ -164,25 +241,29 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         loading: false,
         offline: false
       });
+      void get().loadFamily();
     } catch {
       set({ loading: false, offline: true });
     }
   },
 
-  addManualExpense: async (amount, category) => {
+  addManualExpense: async (amount, category, scope = "PERSONAL") => {
     const user = requireUser(get().user);
+    const familyId = scope === "HOUSE" ? get().family?.id ?? null : null;
     const optimistic: Transaction = {
       id: `local-${Date.now()}`,
       amount,
       category,
       status: "CLEARED",
       source: "MANUAL",
+      scope,
+      familyId,
       occurredAt: new Date().toISOString(),
       attachments: []
     };
 
     set({ transactions: [optimistic, ...get().transactions] });
-    await api.addTransaction({ userId: user.id, amount, category });
+    await api.addTransaction({ userId: user.id, amount, category, scope, familyId });
     await get().load();
   },
 
@@ -205,16 +286,16 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     await get().load();
   },
 
-  saveExpectedIncome: async (expected, actual) => {
+  saveExpectedIncome: async (expected, actual, houseAllocation) => {
     const user = requireUser(get().user);
     const currentCycle = get().incomeCycle;
     set({
       incomeCycle: currentCycle
-        ? { ...currentCycle, expected, actual: actual ?? currentCycle.actual }
-        : { id: "local-income", expected, actual, cycleMonth: new Date().toISOString() }
+        ? { ...currentCycle, expected, actual: actual ?? currentCycle.actual, houseAllocation: houseAllocation ?? currentCycle.houseAllocation }
+        : { id: "local-income", expected, actual, houseAllocation, cycleMonth: new Date().toISOString() }
     });
 
-    await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual });
+    await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual, houseAllocation });
     await get().load();
   },
 
@@ -276,6 +357,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   completePendingExpense: async (transaction, input) => {
     const user = requireUser(get().user);
+    const scope = input.scope ?? transaction.scope ?? "PERSONAL";
+    const familyId = scope === "HOUSE" ? get().family?.id ?? null : null;
     const replace = (item: Transaction) =>
       item.id === transaction.id
         ? {
@@ -284,6 +367,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
             category: input.category,
             merchant: input.merchant,
             notes: input.notes,
+            scope,
+            familyId,
             status: "CLEARED" as const
           }
         : item;
@@ -296,7 +381,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       category: input.category,
       merchant: input.merchant,
       notes: input.notes,
-      status: "CLEARED"
+      status: "CLEARED",
+      scope,
+      familyId
     });
     await get().load();
   },

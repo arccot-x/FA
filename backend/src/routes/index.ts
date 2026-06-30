@@ -2,6 +2,7 @@ import { Router } from "express";
 import { aiRouter } from "./ai";
 import { authRouter } from "./auth";
 import { billsRouter } from "./bills";
+import { familiesRouter } from "./families";
 import { bootstrapRouter } from "./bootstrap";
 import { incomeRouter } from "./income";
 import { transactionsRouter } from "./transactions";
@@ -13,6 +14,7 @@ export const router = Router();
 
 router.use("/auth", authRouter);
 router.use("/ai", aiRouter);
+router.use("/families", familiesRouter);
 router.use("/bootstrap", bootstrapRouter);
 router.use("/users", usersRouter);
 router.use("/income", incomeRouter);

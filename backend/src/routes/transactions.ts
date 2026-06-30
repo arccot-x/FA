@@ -1,4 +1,4 @@
-import { ExpenseCategory, TransactionSource, TransactionStatus, TransactionType } from "@prisma/client";
+import { ExpenseCategory, MemberStatus, TransactionScope, TransactionSource, TransactionStatus, TransactionType } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -6,6 +6,21 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const transactionsRouter = Router();
+
+// Resolves the familyId to store for a transaction, validating house access.
+async function resolveScope(userId: string, scope: TransactionScope | undefined, familyId: string | null | undefined) {
+  if (scope !== TransactionScope.HOUSE) {
+    return { scope: TransactionScope.PERSONAL, familyId: null };
+  }
+  if (!familyId) {
+    throw new Error("A family is required for house expenses.");
+  }
+  const member = await prisma.familyMember.findUnique({ where: { familyId_userId: { familyId, userId } } });
+  if (!member || member.status !== MemberStatus.ACTIVE) {
+    throw new Error("You are not a member of this family.");
+  }
+  return { scope: TransactionScope.HOUSE, familyId };
+}
 
 transactionsRouter.get(
   "/:userId",
@@ -30,6 +45,8 @@ const transactionSchema = z.object({
   category: z.nativeEnum(ExpenseCategory).optional(),
   merchant: z.string().optional(),
   notes: z.string().optional(),
+  scope: z.nativeEnum(TransactionScope).optional(),
+  familyId: z.string().nullable().optional(),
   occurredAt: z.coerce.date().optional()
 });
 
@@ -38,8 +55,9 @@ transactionsRouter.post(
   asyncHandler(async (req, res) => {
     requireUserAccess(req, req.params.userId);
     const input = transactionSchema.parse(req.body);
+    const resolved = await resolveScope(req.params.userId, input.scope, input.familyId);
     const transaction = await prisma.transaction.create({
-      data: { ...input, userId: req.params.userId },
+      data: { ...input, ...resolved, userId: req.params.userId },
       include: { attachments: true }
     });
 
@@ -52,9 +70,11 @@ transactionsRouter.patch(
   asyncHandler(async (req, res) => {
     requireUserAccess(req, req.params.userId);
     const input = transactionSchema.partial().parse(req.body);
+    // Only re-resolve scope when the client sent one (so plain edits keep the existing scope).
+    const data = input.scope === undefined ? input : { ...input, ...(await resolveScope(req.params.userId, input.scope, input.familyId)) };
     const transaction = await prisma.transaction.update({
       where: { id: req.params.transactionId, userId: req.params.userId },
-      data: input,
+      data,
       include: { attachments: true }
     });
 
