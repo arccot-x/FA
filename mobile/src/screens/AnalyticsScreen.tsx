@@ -31,7 +31,7 @@ export function AnalyticsScreen() {
   const analytics = useMemo(() => {
     const now = new Date();
     const income = toNumber(incomeCycle?.expected) || 4200;
-    const cleared = transactions.filter((item) => item.status === "CLEARED");
+    const cleared = transactions.filter((item) => item.status === "CLEARED" && item.type !== "INCOME");
     const inMonth = (offset: number) => (date: Date) => {
       const ref = new Date(now.getFullYear(), now.getMonth() + offset, 1);
       return date.getMonth() === ref.getMonth() && date.getFullYear() === ref.getFullYear();

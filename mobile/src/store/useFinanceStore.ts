@@ -3,6 +3,9 @@ import { create } from "zustand";
 import * as api from "../services/api";
 import type { BillOccurrence, BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, IncomeCycle, Transaction, TransactionScope, User, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
+import { clearCache, loadCache, saveCache } from "../utils/cache";
+
+type CachedBootstrap = Pick<BootstrapPayload, "incomeCycle" | "bills" | "transactions" | "vaultDocuments">;
 
 type BillsState = BootstrapPayload["bills"];
 
@@ -33,7 +36,7 @@ type FinanceState = {
   login: (input: { email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   load: () => Promise<void>;
-  addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope) => Promise<void>;
+  addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope, type?: import("../types").TransactionType) => Promise<void>;
   saveIncomeSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
   saveExpectedIncome: (expected: number, actual?: number, houseAllocation?: number) => Promise<void>;
   changePassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
@@ -158,9 +161,20 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       }
 
       api.setAuthToken(token);
-      const { user } = await api.getCurrentAccount();
-      set({ user, authReady: true, offline: false });
-      await get().load();
+      try {
+        const { user } = await api.getCurrentAccount();
+        set({ user, authReady: true, offline: false });
+        await get().load();
+      } catch {
+        // Likely offline / cold backend: stay signed in using cached data instead of logging out.
+        const cachedUser = await loadCache<User>("user");
+        if (cachedUser) {
+          set({ user: cachedUser, authReady: true, loading: false, offline: true });
+          await get().load();
+          return;
+        }
+        throw new Error("no-cache");
+      }
     } catch {
       await clearSession();
       set({
@@ -206,6 +220,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   logout: async () => {
     await clearSession();
+    void clearCache("user");
+    void clearCache(`bootstrap-${get().selectedMonth}`);
     set({
       user: undefined,
       incomeCycle: undefined,
@@ -229,9 +245,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       return;
     }
 
+    const month = get().selectedMonth;
     set({ loading: true });
     try {
-      const data = await api.bootstrap(user.id, get().selectedMonth);
+      const data = await api.bootstrap(user.id, month);
       set({
         user: data.user,
         incomeCycle: data.incomeCycle,
@@ -241,29 +258,46 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         loading: false,
         offline: false
       });
+      void saveCache("user", data.user);
+      void saveCache(`bootstrap-${month}`, { incomeCycle: data.incomeCycle, bills: data.bills, transactions: data.transactions, vaultDocuments: data.vaultDocuments });
       void get().loadFamily();
     } catch {
-      set({ loading: false, offline: true });
+      // Offline: fall back to the last cached data for this month if we have it.
+      const cached = await loadCache<CachedBootstrap>(`bootstrap-${month}`);
+      if (cached) {
+        set({
+          incomeCycle: cached.incomeCycle,
+          bills: cached.bills,
+          transactions: cached.transactions,
+          vaultDocuments: cached.vaultDocuments,
+          loading: false,
+          offline: true
+        });
+      } else {
+        set({ loading: false, offline: true });
+      }
     }
   },
 
-  addManualExpense: async (amount, category, scope = "PERSONAL") => {
+  addManualExpense: async (amount, category, scope = "PERSONAL", type = "EXPENSE") => {
     const user = requireUser(get().user);
-    const familyId = scope === "HOUSE" ? get().family?.id ?? null : null;
+    const isIncome = type === "INCOME";
+    const familyId = !isIncome && scope === "HOUSE" ? get().family?.id ?? null : null;
     const optimistic: Transaction = {
       id: `local-${Date.now()}`,
       amount,
-      category,
+      category: isIncome ? null : category,
+      type,
       status: "CLEARED",
       source: "MANUAL",
-      scope,
+      scope: isIncome ? "PERSONAL" : scope,
       familyId,
       occurredAt: new Date().toISOString(),
       attachments: []
     };
 
     set({ transactions: [optimistic, ...get().transactions] });
-    await api.addTransaction({ userId: user.id, amount, category, scope, familyId });
+    await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : scope, familyId });
     await get().load();
   },
 

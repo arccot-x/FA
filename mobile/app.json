@@ -6,9 +6,16 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "frictionlessfinance",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E7C66"
+    },
     "android": {
       "package": "com.frictionless.finance",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0E7C66"
       },
       "permissions": [

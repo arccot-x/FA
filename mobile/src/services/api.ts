@@ -1,5 +1,5 @@
 import { API_URL, DEMO_USER_EMAIL } from "../config";
-import type { BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, Transaction, TransactionScope, User, VaultCategory, VaultDocument } from "../types";
+import type { BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, Transaction, TransactionScope, TransactionType, User, VaultCategory, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
 let authToken: string | undefined;
@@ -85,9 +85,10 @@ export async function createDemoUser() {
 export async function addTransaction(input: {
   userId: string;
   amount: number;
-  category: ExpenseCategory;
+  category?: ExpenseCategory;
   merchant?: string;
   notes?: string;
+  type?: TransactionType;
   scope?: TransactionScope;
   familyId?: string | null;
 }) {
@@ -98,6 +99,7 @@ export async function addTransaction(input: {
       category: input.category,
       merchant: input.merchant,
       notes: input.notes,
+      type: input.type,
       scope: input.scope,
       familyId: input.familyId
     })

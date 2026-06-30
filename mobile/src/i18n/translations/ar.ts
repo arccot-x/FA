@@ -108,7 +108,10 @@ export const ar: Translations = {
   quickAdd: {
     title: "إضافة سريعة",
     saveExpense: "حفظ المصروف",
-    gallery: "من المعرض"
+    gallery: "من المعرض",
+    expense: "مصروف",
+    income: "دخل",
+    addIncome: "إضافة دخل"
   },
   pending: {
     title: "إكمال الإيصال",

@@ -106,7 +106,10 @@ export const en = {
   quickAdd: {
     title: "Quick add",
     saveExpense: "Save expense",
-    gallery: "From gallery"
+    gallery: "From gallery",
+    expense: "Expense",
+    income: "Income",
+    addIncome: "Add income"
   },
   pending: {
     title: "Complete receipt",

@@ -89,12 +89,15 @@ export type Attachment = {
   mimeType: string;
 };
 
+export type TransactionType = "EXPENSE" | "INCOME" | "TRANSFER";
+
 export type Transaction = {
   id: string;
   amount?: string | number | null;
   category?: ExpenseCategory | null;
   merchant?: string | null;
   notes?: string | null;
+  type?: TransactionType;
   status: "CLEARED" | "PENDING_DETAILS";
   source: "MANUAL" | "SNAP_SAVE" | "IMPORT";
   scope?: TransactionScope;

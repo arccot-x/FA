@@ -11,14 +11,14 @@ import { useI18n } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { CURRENCIES } from "../utils/money";
-import type { ExpenseCategory, TransactionScope } from "../types";
+import type { ExpenseCategory, TransactionScope, TransactionType } from "../types";
 
 type QuickAddModalProps = {
   visible: boolean;
   onClose: () => void;
   onCamera: () => void;
   onAttachImage: (uri: string) => void;
-  onSubmit: (amount: number, category: ExpenseCategory, scope: TransactionScope) => Promise<void>;
+  onSubmit: (amount: number, category: ExpenseCategory, scope: TransactionScope, type: TransactionType) => Promise<void>;
 };
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"];
@@ -37,7 +37,9 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
   const [scope, setScope] = useState<TransactionScope>("PERSONAL");
+  const [entryType, setEntryType] = useState<TransactionType>("EXPENSE");
   const [saving, setSaving] = useState(false);
+  const isIncome = entryType === "INCOME";
 
   const pickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
@@ -56,10 +58,11 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
     if (!parsed) return;
     setSaving(true);
     try {
-      await onSubmit(parsed, category, inFamily ? scope : "PERSONAL");
+      await onSubmit(parsed, category, !isIncome && inFamily ? scope : "PERSONAL", entryType);
       setAmount("");
       setCategory("GROCERIES");
       setScope("PERSONAL");
+      setEntryType("EXPENSE");
       onClose();
     } finally {
       setSaving(false);
@@ -78,12 +81,30 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
           </View>
         </View>
 
-        <Animated.Text key={amount} entering={FadeIn.duration(120)} adjustsFontSizeToFit numberOfLines={1} style={[styles.amount, { color: theme.colors.text }]}>
+        <View style={styles.scopeRow}>
+          <SegmentedControl
+            segments={[
+              { value: "EXPENSE", label: t("quickAdd.expense") },
+              { value: "INCOME", label: t("quickAdd.income") }
+            ]}
+            value={entryType}
+            onChange={(value) => setEntryType(value as TransactionType)}
+          />
+        </View>
+
+        <Animated.Text
+          key={amount}
+          entering={FadeIn.duration(120)}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+          style={[styles.amount, { color: isIncome ? theme.colors.success : theme.colors.text }]}
+        >
+          {isIncome ? "+" : ""}
           {symbol}
           {amount || "0"}
         </Animated.Text>
 
-        {inFamily ? (
+        {!isIncome && inFamily ? (
           <View style={styles.scopeRow}>
             <SegmentedControl
               segments={[
@@ -96,11 +117,13 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
           </View>
         ) : null}
 
-        <View style={styles.categoryGrid}>
-          {quickCategories.map((item) => (
-            <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
-          ))}
-        </View>
+        {!isIncome ? (
+          <View style={styles.categoryGrid}>
+            {quickCategories.map((item) => (
+              <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.keypad}>
           {KEYS.map((key) => (
@@ -118,7 +141,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
           ))}
         </View>
 
-        <Button label={t("quickAdd.saveExpense")} icon="check" onPress={submit} loading={saving} style={styles.save} />
+        <Button label={isIncome ? t("quickAdd.addIncome") : t("quickAdd.saveExpense")} icon="check" onPress={submit} loading={saving} style={styles.save} />
       </SafeAreaView>
     </Modal>
   );

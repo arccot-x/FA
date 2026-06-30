@@ -63,11 +63,14 @@ export function HomeScreen() {
     // Personal income = the part of income NOT allocated to the house pool.
     const expected = Math.max(0, (toNumber(incomeCycle?.expected) || toNumber(user?.defaultMonthlyIncome) || 4200) - houseAllocation);
     const actual = toNumber(incomeCycle?.actual);
-    const received = actual > 0 ? Math.max(0, actual - houseAllocation) : 0;
-    const spent = monthTransactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const cleared = monthTransactions.filter((item) => item.status === "CLEARED");
+    // Logged income/deposits add to what's available; expenses are everything else.
+    const extraIncome = cleared.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const spent = cleared.filter((item) => item.type !== "INCOME").reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const received = actual > 0 ? Math.max(0, actual - houseAllocation) + extraIncome : 0;
     // Only bills you've actually PAID reduce what's still usable; unpaid bills are upcoming.
     const billsPaid = personalSettled.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    return summariseIncome({ expected, received, spent, billsDue: billsPaid, paydayDay: user?.paydayDay ?? 1 });
+    return summariseIncome({ expected: expected + extraIncome, received, spent, billsDue: billsPaid, paydayDay: user?.paydayDay ?? 1 });
   }, [incomeCycle, houseAllocation, personalSettled, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
 
   // The data shown depends on the selected money view.
@@ -76,26 +79,36 @@ export function HomeScreen() {
 
   const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => {
     const isPending = item.status === "PENDING_DETAILS";
-    const icon = isPending ? "camera" : item.category ? categoryIcon[item.category] : "cash";
+    const isIncome = item.type === "INCOME";
+    const icon = isPending ? "camera" : isIncome ? "cash-plus" : item.category ? categoryIcon[item.category] : "cash";
     return (
       <Animated.View entering={FadeInDown.delay(index * 45).duration(320)}>
         <PressableScale
-          scaleTo={0.97}
-          onPress={() => setPendingExpense(item)}
+          scaleTo={isIncome ? 1 : 0.97}
+          onPress={() => {
+            if (!isIncome) setPendingExpense(item);
+          }}
           style={[styles.txRow, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
         >
-          <View style={[styles.txIcon, { backgroundColor: isPending ? theme.colors.warningSoft : theme.colors.primarySoft, borderRadius: theme.radii.md }]}>
-            <MaterialCommunityIcons color={isPending ? theme.colors.warning : theme.colors.primary} name={icon as never} size={22} />
+          <View
+            style={[
+              styles.txIcon,
+              { backgroundColor: isIncome ? theme.colors.successSoft : isPending ? theme.colors.warningSoft : theme.colors.primarySoft, borderRadius: theme.radii.md }
+            ]}
+          >
+            <MaterialCommunityIcons color={isIncome ? theme.colors.success : isPending ? theme.colors.warning : theme.colors.primary} name={icon as never} size={22} />
           </View>
           <View style={styles.txBody}>
             <Text numberOfLines={1} style={[styles.txTitle, { color: theme.colors.text }]}>
-              {item.merchant ?? (isPending ? t("home.pendingReceipt") : t(`category.${item.category ?? "OTHER"}` as never))}
+              {item.merchant ?? (isIncome ? t("quickAdd.income") : isPending ? t("home.pendingReceipt") : t(`category.${item.category ?? "OTHER"}` as never))}
             </Text>
             <Text style={[styles.txMeta, { color: theme.colors.subtleText }]}>
-              {isPending ? t("home.tapToAdd") : houseView && item.spenderName ? item.spenderName : t(`category.${item.category ?? "OTHER"}` as never)}
+              {isIncome ? t("quickAdd.income") : isPending ? t("home.tapToAdd") : houseView && item.spenderName ? item.spenderName : t(`category.${item.category ?? "OTHER"}` as never)}
             </Text>
           </View>
-          <Text style={[styles.txAmount, { color: isPending ? theme.colors.warning : theme.colors.text }]}>{item.amount ? money(item.amount) : "—"}</Text>
+          <Text style={[styles.txAmount, { color: isIncome ? theme.colors.success : isPending ? theme.colors.warning : theme.colors.text }]}>
+            {item.amount ? `${isIncome ? "+" : ""}${money(item.amount)}` : "—"}
+          </Text>
         </PressableScale>
       </Animated.View>
     );

@@ -108,7 +108,10 @@ export const tr: Translations = {
   quickAdd: {
     title: "Hızlı ekle",
     saveExpense: "Harcamayı kaydet",
-    gallery: "Galeriden"
+    gallery: "Galeriden",
+    expense: "Gider",
+    income: "Gelir",
+    addIncome: "Gelir ekle"
   },
   pending: {
     title: "Fişi tamamla",
