@@ -1,5 +1,5 @@
 import { API_URL, DEMO_USER_EMAIL } from "../config";
-import type { BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, Transaction, TransactionScope, TransactionType, User, VaultCategory, VaultDocument } from "../types";
+import type { BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, SubscriptionInfo, SubscriptionPlanId, Transaction, TransactionScope, TransactionType, User, VaultCategory, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
 let authToken: string | undefined;
@@ -191,8 +191,19 @@ export async function createFamily(name: string) {
   return request<{ family: Family }>("/families", { method: "POST", body: JSON.stringify({ name }) });
 }
 
-export async function inviteFamilyMember(familyId: string, userId: string, memberLimit?: number) {
-  return request(`/families/${familyId}/invite`, { method: "POST", body: JSON.stringify({ userId, memberLimit }) });
+export async function inviteFamilyMember(familyId: string, userId: string) {
+  return request(`/families/${familyId}/invite`, { method: "POST", body: JSON.stringify({ userId }) });
+}
+
+export async function getSubscription() {
+  return request<{ subscription: SubscriptionInfo }>("/subscriptions/me");
+}
+
+export async function checkoutSubscription(input: { plan: SubscriptionPlanId; billingName: string; billingEmail: string; cardNumber: string }) {
+  return request<{ subscription: SubscriptionInfo }>("/subscriptions/checkout", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
 }
 
 export async function acceptFamilyInvite(memberId: string) {

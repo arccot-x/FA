@@ -34,7 +34,7 @@ export function HomeScreen() {
   const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
 
-  const inFamily = !!family;
+  const inFamily = !!family?.subscription?.allowed;
   const houseView = inFamily && view === "house";
 
   useFocusEffect(

@@ -26,7 +26,7 @@ type FinanceState = {
   house: HouseData;
   loadFamily: () => Promise<void>;
   createFamily: (name: string) => Promise<void>;
-  inviteFamilyMember: (userId: string, memberLimit?: number) => Promise<void>;
+  inviteFamilyMember: (userId: string) => Promise<void>;
   acceptInvite: (memberId: string) => Promise<void>;
   declineInvite: (memberId: string) => Promise<void>;
   leaveFamily: () => Promise<void>;
@@ -89,6 +89,10 @@ function markOfflineMutation(set: (state: Partial<FinanceState>) => void) {
   set({ offline: true, loading: false });
 }
 
+function canUseHouse(family?: Family | null) {
+  return Boolean(family?.subscription?.allowed);
+}
+
 export const useFinanceStore = create<FinanceState>((set, get) => ({
   bills: emptyBills,
   transactions: [],
@@ -132,10 +136,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     await get().loadFamily();
   },
 
-  inviteFamilyMember: async (userId, memberLimit) => {
+  inviteFamilyMember: async (userId) => {
     const family = get().family;
     if (!family) throw new Error("Create a family first.");
-    await api.inviteFamilyMember(family.id, userId, memberLimit);
+    await api.inviteFamilyMember(family.id, userId);
     await get().loadFamily();
   },
 
@@ -297,7 +301,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   addManualExpense: async (amount, category, scope = "PERSONAL", type = "EXPENSE") => {
     const user = requireUser(get().user);
     const isIncome = type === "INCOME";
-    const familyId = !isIncome && scope === "HOUSE" ? get().family?.id ?? null : null;
+    const resolvedScope: TransactionScope = !isIncome && scope === "HOUSE" && canUseHouse(get().family) ? "HOUSE" : "PERSONAL";
+    const familyId = resolvedScope === "HOUSE" ? get().family?.id ?? null : null;
     const optimistic: Transaction = {
       id: `local-${Date.now()}`,
       amount,
@@ -305,7 +310,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       type,
       status: "CLEARED",
       source: "MANUAL",
-      scope: isIncome ? "PERSONAL" : scope,
+      scope: isIncome ? "PERSONAL" : resolvedScope,
       familyId,
       occurredAt: new Date().toISOString(),
       attachments: []
@@ -313,7 +318,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     set({ transactions: [optimistic, ...get().transactions] });
     try {
-      await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : scope, familyId });
+      await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : resolvedScope, familyId });
       await get().load();
     } catch {
       markOfflineMutation(set);
@@ -383,7 +388,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   addBill: async (input) => {
     const user = requireUser(get().user);
-    const familyId = input.scope === "HOUSE" ? get().family?.id ?? null : null;
+    const resolvedScope: TransactionScope = input.scope === "HOUSE" && canUseHouse(get().family) ? "HOUSE" : "PERSONAL";
+    const familyId = resolvedScope === "HOUSE" ? get().family?.id ?? null : null;
     const optimistic: BillOccurrence = {
       id: `local-bill-${Date.now()}`,
       amount: input.defaultAmount,
@@ -398,13 +404,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         dueDay: input.dueDay,
         icon: input.icon,
         autopay: input.autopay ?? false,
-        scope: input.scope ?? "PERSONAL",
+        scope: resolvedScope,
         familyId
       }
     };
     set({ bills: { ...get().bills, unpaid: [optimistic, ...get().bills.unpaid] } });
     try {
-      await api.addBillTemplate({ userId: user.id, ...input, familyId });
+      await api.addBillTemplate({ userId: user.id, ...input, scope: resolvedScope, familyId });
       await get().load();
     } catch {
       markOfflineMutation(set);
@@ -498,7 +504,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   completePendingExpense: async (transaction, input) => {
     const user = requireUser(get().user);
-    const scope = input.scope ?? transaction.scope ?? "PERSONAL";
+    const scope: TransactionScope = input.scope === "HOUSE" && canUseHouse(get().family) ? "HOUSE" : "PERSONAL";
     const familyId = scope === "HOUSE" ? get().family?.id ?? null : null;
     const replace = (item: Transaction) =>
       item.id === transaction.id

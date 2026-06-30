@@ -3,6 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { getBillsForMonth } from "../services/bills";
+import { requireFamilyAccess } from "../services/subscriptions";
 import { asyncHandler } from "../utils/asyncHandler";
 import { dueDateFor, parseMonth } from "../utils/month";
 import { requireUserAccess } from "../utils/requireUserAccess";
@@ -21,6 +22,8 @@ async function resolveScope(userId: string, scope: TransactionScope | undefined,
   if (!member || member.status !== MemberStatus.ACTIVE) {
     throw new Error("You are not a member of this family.");
   }
+  const family = await prisma.family.findUniqueOrThrow({ where: { id: familyId } });
+  await requireFamilyAccess(family.ownerId);
   return { scope: TransactionScope.HOUSE, familyId };
 }
 

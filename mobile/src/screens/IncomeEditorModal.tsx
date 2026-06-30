@@ -36,7 +36,7 @@ export function IncomeEditorModal({
   const theme = useTheme();
   const { t } = useI18n();
   const money = useMoney();
-  const inFamily = useFinanceStore((state) => !!state.family);
+  const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
 
   const [income, setIncome] = useState(String(userIncome || ""));
   const [expected, setExpected] = useState(String(currentExpected || userIncome || ""));

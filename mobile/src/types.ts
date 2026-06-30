@@ -57,6 +57,11 @@ export type Family = {
   ownerId: string;
   role: FamilyRole;
   members: FamilyMemberInfo[];
+  subscription?: {
+    allowed: boolean;
+    memberLimit: number;
+    reason?: string | null;
+  };
 };
 
 export type FamilyInvite = {
@@ -115,6 +120,22 @@ export type HouseData = {
   billsDue: number;
   balance: number;
   transactions: Transaction[];
+  locked?: boolean;
+  lockedReason?: string | null;
+};
+
+export type SubscriptionPlanId = "INDIVIDUAL" | "FAMILY_3" | "FAMILY_6";
+
+export type SubscriptionInfo = {
+  plan: SubscriptionPlanId;
+  active: boolean;
+  billingName?: string | null;
+  billingEmail?: string | null;
+  cardLast4?: string | null;
+  price: number;
+  memberLimit: number;
+  family: boolean;
+  updatedAt?: string | null;
 };
 
 export type VaultDocument = {

@@ -21,6 +21,7 @@ import { BillCenterScreen } from "./src/screens/BillCenterScreen";
 import { VaultScreen } from "./src/screens/VaultScreen";
 import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { SubscriptionScreen } from "./src/screens/SubscriptionScreen";
 import { CameraScreen } from "./src/screens/CameraScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
@@ -33,13 +34,14 @@ import { BudgetProvider } from "./src/utils/BudgetProvider";
 import { GoalsProvider } from "./src/utils/GoalsProvider";
 import { RemindersProvider } from "./src/utils/RemindersProvider";
 import { AppLockProvider } from "./src/utils/AppLockProvider";
-import { SubscriptionProvider } from "./src/utils/SubscriptionProvider";
+import { SubscriptionProvider, useSubscription } from "./src/utils/SubscriptionProvider";
 import { getPref, PREF_KEYS, setPref } from "./src/utils/prefs";
 import { toNumber } from "./src/utils/money";
 
 export type RootStackParamList = {
   MainTabs: undefined;
   Camera: undefined;
+  Subscription: undefined;
 };
 
 export type MainTabsParamList = {
@@ -74,11 +76,18 @@ function Root() {
   const { ready: themeReady } = useThemeContext();
   const { t, ready: i18nReady } = useI18n();
   const { authReady, restoreSession, user } = useFinanceStore();
+  const { refreshSubscription } = useSubscription();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
+
+  useEffect(() => {
+    if (user) {
+      void refreshSubscription().catch(() => {});
+    }
+  }, [refreshSubscription, user]);
 
   // Decide whether to show first-run onboarding (new accounts with no income set).
   useEffect(() => {
@@ -142,6 +151,7 @@ function Root() {
             <Stack.Navigator screenOptions={{ headerShown: false }}>
               <Stack.Screen name="MainTabs" component={MainTabs} />
               <Stack.Screen name="Camera" component={CameraScreen} options={{ presentation: "fullScreenModal" }} />
+              <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: "modal" }} />
             </Stack.Navigator>
           </NavigationContainer>
         )

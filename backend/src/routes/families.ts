@@ -2,6 +2,7 @@ import { BillStatus, FamilyRole, MemberStatus, TransactionScope } from "@prisma/
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
+import { getFamilyAccess, requireFamilyAccess } from "../services/subscriptions";
 import { asyncHandler } from "../utils/asyncHandler";
 import { getAuthUserId } from "../utils/requireUserAccess";
 import { monthStart, parseMonth } from "../utils/month";
@@ -40,6 +41,7 @@ familiesRouter.post(
     if (await activeMembership(userId)) {
       throw new Error("You are already in a family.");
     }
+    await requireFamilyAccess(userId);
 
     const family = await prisma.family.create({
       data: {
@@ -74,7 +76,8 @@ familiesRouter.get(
         name: membership.family.name,
         ownerId: membership.family.ownerId,
         role: membership.role,
-        members: await enrichMembers(members)
+        members: await enrichMembers(members),
+        subscription: await getFamilyAccess(membership.family.ownerId)
       };
     }
 
@@ -90,12 +93,13 @@ familiesRouter.post(
   "/:familyId/invite",
   asyncHandler(async (req, res) => {
     const userId = getAuthUserId(req);
-    const { userId: inviteeId, memberLimit } = z.object({ userId: z.string().min(1), memberLimit: z.number().int().min(1).max(7).optional() }).parse(req.body);
+    const { userId: inviteeId } = z.object({ userId: z.string().min(1) }).parse(req.body);
     const family = await prisma.family.findUniqueOrThrow({ where: { id: req.params.familyId } });
 
     if (family.ownerId !== userId) {
       throw new Error("Only the family owner can invite members.");
     }
+    const access = await requireFamilyAccess(family.ownerId);
     if (inviteeId === userId) {
       throw new Error("You are already in this family.");
     }
@@ -112,9 +116,8 @@ familiesRouter.post(
       throw new Error(existing.status === MemberStatus.ACTIVE ? "That person is already a member." : "That person is already invited.");
     }
 
-    const limit = memberLimit ?? 7;
     const members = await prisma.familyMember.count({ where: { familyId: family.id } });
-    if (members >= limit) {
+    if (members >= access.memberLimit) {
       throw new Error("Your subscription limit has been reached.");
     }
 
@@ -134,6 +137,12 @@ familiesRouter.post(
     }
     if (await activeMembership(userId)) {
       throw new Error("Leave your current family before joining another.");
+    }
+    const family = await prisma.family.findUniqueOrThrow({ where: { id: member.familyId } });
+    const access = await requireFamilyAccess(family.ownerId);
+    const members = await prisma.familyMember.count({ where: { familyId: family.id, status: MemberStatus.ACTIVE } });
+    if (members >= access.memberLimit) {
+      throw new Error("This family subscription is full.");
     }
     await prisma.familyMember.update({ where: { id: member.id }, data: { status: MemberStatus.ACTIVE } });
     res.json({ ok: true });
@@ -197,6 +206,11 @@ familiesRouter.get(
     const membership = await activeMembership(userId);
     if (!membership) {
       res.json({ pool: 0, spent: 0, balance: 0, transactions: [] });
+      return;
+    }
+    const access = await getFamilyAccess(membership.family.ownerId);
+    if (!access.allowed) {
+      res.json({ pool: 0, spent: 0, billsDue: 0, balance: 0, transactions: [], locked: true, lockedReason: access.reason });
       return;
     }
 

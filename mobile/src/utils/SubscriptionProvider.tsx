@@ -1,45 +1,41 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { getPref, PREF_KEYS, setPref } from "./prefs";
-
-export type SubscriptionPlanId = "individual" | "family3" | "family6";
+import * as api from "../services/api";
+import type { SubscriptionInfo, SubscriptionPlanId } from "../types";
 
 export type SubscriptionPlan = {
   id: SubscriptionPlanId;
   name: string;
   price: number;
   memberLimit: number;
-};
-
-export type SubscriptionInfo = {
-  planId: SubscriptionPlanId;
-  name: string;
-  email: string;
-  cardLast4: string;
-  active: boolean;
-  updatedAt: string;
+  family: boolean;
+  description: string;
 };
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  { id: "individual", name: "Individual", price: 5, memberLimit: 1 },
-  { id: "family3", name: "Family 3", price: 10, memberLimit: 4 },
-  { id: "family6", name: "Family 6", price: 15, memberLimit: 7 }
+  { id: "INDIVIDUAL", name: "Individual", price: 5, memberLimit: 1, family: false, description: "Personal finance, receipts, bills and vault." },
+  { id: "FAMILY_3", name: "Family 3", price: 10, memberLimit: 4, family: true, description: "Share house money with up to 3 people." },
+  { id: "FAMILY_6", name: "Family 6", price: 15, memberLimit: 7, family: true, description: "Share house money with up to 6 people." }
 ];
 
 const defaultSubscription: SubscriptionInfo = {
-  planId: "individual",
-  name: "",
-  email: "",
-  cardLast4: "",
+  plan: "INDIVIDUAL",
   active: false,
-  updatedAt: ""
+  billingName: null,
+  billingEmail: null,
+  cardLast4: null,
+  price: 5,
+  memberLimit: 1,
+  family: false,
+  updatedAt: null
 };
 
 type SubscriptionContextValue = {
   subscription: SubscriptionInfo;
   plan: SubscriptionPlan;
-  ready: boolean;
-  saveSubscription: (input: { planId: SubscriptionPlanId; name: string; email: string; cardNumber: string }) => Promise<void>;
+  loading: boolean;
+  refreshSubscription: () => Promise<void>;
+  saveSubscription: (input: { plan: SubscriptionPlanId; billingName: string; billingEmail: string; cardNumber: string }) => Promise<void>;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
@@ -50,42 +46,31 @@ function planFor(id: SubscriptionPlanId) {
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<SubscriptionInfo>(defaultSubscription);
-  const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
-      const stored = await getPref(PREF_KEYS.subscription);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as SubscriptionInfo;
-          if (SUBSCRIPTION_PLANS.some((item) => item.id === parsed.planId)) {
-            setSubscription({ ...defaultSubscription, ...parsed });
-          }
-        } catch {
-          // Ignore corrupt test subscription data.
-        }
-      }
-      setReady(true);
-    })();
+  const refreshSubscription = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await api.getSubscription();
+      setSubscription(result.subscription);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const saveSubscription = async (input: { planId: SubscriptionPlanId; name: string; email: string; cardNumber: string }) => {
-    const digits = input.cardNumber.replace(/\D/g, "");
-    const next: SubscriptionInfo = {
-      planId: input.planId,
-      name: input.name.trim(),
-      email: input.email.trim(),
-      cardLast4: digits.slice(-4) || "0000",
-      active: true,
-      updatedAt: new Date().toISOString()
-    };
-    setSubscription(next);
-    await setPref(PREF_KEYS.subscription, JSON.stringify(next));
-  };
+  const saveSubscription = useCallback(async (input: { plan: SubscriptionPlanId; billingName: string; billingEmail: string; cardNumber: string }) => {
+    setLoading(true);
+    try {
+      const result = await api.checkoutSubscription(input);
+      setSubscription(result.subscription);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const value = useMemo<SubscriptionContextValue>(
-    () => ({ subscription, plan: planFor(subscription.planId), ready, saveSubscription }),
-    [subscription, ready]
+    () => ({ subscription, plan: planFor(subscription.plan), loading, refreshSubscription, saveSubscription }),
+    [subscription, loading, refreshSubscription, saveSubscription]
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;

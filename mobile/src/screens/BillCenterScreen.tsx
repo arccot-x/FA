@@ -201,7 +201,7 @@ type AddBillInput = {
 function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClose: () => void; onSubmit: (input: AddBillInput) => Promise<void> }) {
   const theme = useTheme();
   const { t } = useI18n();
-  const inFamily = useFinanceStore((state) => !!state.family);
+  const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("1");

@@ -21,7 +21,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
   const { t } = useI18n();
   const theme = useTheme();
   const userId = useFinanceStore((state) => state.user?.id);
-  const inFamily = useFinanceStore((state) => !!state.family);
+  const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [notes, setNotes] = useState("");

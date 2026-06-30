@@ -33,7 +33,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
   const { currency } = useCurrency();
   const symbol = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "$";
 
-  const inFamily = useFinanceStore((state) => !!state.family);
+  const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
   const [scope, setScope] = useState<TransactionScope>("PERSONAL");

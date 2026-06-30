@@ -88,6 +88,12 @@ enum TransactionScope {
   HOUSE
 }
 
+enum SubscriptionPlan {
+  INDIVIDUAL
+  FAMILY_3
+  FAMILY_6
+}
+
 model User {
   id                    String             @id @default(cuid())
   email                 String             @unique
@@ -105,6 +111,22 @@ model User {
   attachments           Attachment[]
   vaultDocuments        VaultDocument[]
   passwordResetTokens   PasswordResetToken[]
+  subscription          Subscription?
+}
+
+model Subscription {
+  id          String           @id @default(cuid())
+  userId      String           @unique
+  plan        SubscriptionPlan @default(INDIVIDUAL)
+  active      Boolean          @default(false)
+  billingName String?
+  billingEmail String?
+  cardLast4   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([plan, active])
 }
 
 model PasswordResetToken {

@@ -110,7 +110,11 @@ export const en = {
     copyId: "Copy ID",
     copied: "ID copied",
     planLimit: "{plan} allows up to {count} people.",
-    limitReached: "Your subscription limit has been reached."
+    limitReached: "Your subscription limit has been reached.",
+    lockedTitle: "Family is locked",
+    lockedMessage: "The family owner needs an active family subscription.",
+    subscribeFirst: "Subscribe to create a family",
+    subscribeFirstHint: "Family plans unlock shared house money, house bills and member invites."
   },
   quickAdd: {
     title: "Quick add",
@@ -212,16 +216,25 @@ export const en = {
   },
   subscription: {
     title: "Subscription",
+    subtitle: "Choose a plan and unlock the right features",
     testMode: "Test subscription",
     activePlan: "{plan} active",
+    notSubscribed: "No active subscription",
+    lockedHint: "Family features are locked until the owner has an active family plan.",
     memberLimit: "Up to {count} people",
     cardEnding: "Card ending {last4}",
     name: "Billing name",
     email: "Billing email",
     cardNumber: "Card number",
+    payment: "Payment info",
     hint: "Test mode accepts any billing info and card number.",
     save: "Save subscription",
-    saved: "Subscription saved."
+    update: "Update subscription",
+    subscribe: "Subscribe for {price}",
+    saved: "Subscription saved.",
+    missingInfo: "Enter a billing name and email.",
+    familyIncluded: "Family sharing included",
+    personalOnly: "Personal account only"
   },
   analytics: {
     title: "Insights",

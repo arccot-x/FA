@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { Button, Field } from "../components/ui";
@@ -8,10 +9,11 @@ import { useTheme } from "../theme";
 import { useSubscription } from "../utils/SubscriptionProvider";
 
 export function FamilySection() {
+  const navigation = useNavigation();
   const theme = useTheme();
   const { t } = useI18n();
   const { user, family, familyInvites, createFamily, inviteFamilyMember, acceptInvite, declineInvite, leaveFamily, deleteFamily } = useFinanceStore();
-  const { plan } = useSubscription();
+  const { subscription } = useSubscription();
 
   const [name, setName] = useState("");
   const [inviteId, setInviteId] = useState("");
@@ -30,7 +32,11 @@ export function FamilySection() {
 
   const isOwner = family?.role === "OWNER";
   const memberCount = family?.members.length ?? 1;
-  const canInvite = memberCount < plan.memberLimit;
+  const familyAccess = family?.subscription;
+  const memberLimit = familyAccess?.memberLimit ?? 1;
+  const familyLocked = family ? !familyAccess?.allowed : false;
+  const canInvite = !familyLocked && memberCount < memberLimit;
+  const canCreateFamily = subscription.active && subscription.family;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
@@ -72,8 +78,17 @@ export function FamilySection() {
 
           <Text style={[styles.label, { color: theme.colors.subtleText, marginTop: 12 }]}>{t("family.members")}</Text>
           <Text style={[styles.hint, { color: theme.colors.muted }]}>
-            {t("family.planLimit", { plan: plan.name, count: plan.memberLimit })}
+            {t("family.planLimit", { plan: t("subscription.title"), count: memberLimit })}
           </Text>
+          {familyLocked ? (
+            <View style={[styles.lockBox, { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning, borderRadius: theme.radii.md }]}>
+              <MaterialCommunityIcons color={theme.colors.warning} name="lock-alert" size={20} />
+              <View style={styles.lockText}>
+                <Text style={[styles.lockTitle, { color: theme.colors.text }]}>{t("family.lockedTitle")}</Text>
+                <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{familyAccess?.reason ?? t("family.lockedMessage")}</Text>
+              </View>
+            </View>
+          ) : null}
           {family.members.map((m) => (
             <View key={m.userId} style={styles.memberRow}>
               <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
@@ -102,7 +117,7 @@ export function FamilySection() {
                     if (!canInvite) {
                       throw new Error(t("family.limitReached"));
                     }
-                    await inviteFamilyMember(inviteId.trim(), plan.memberLimit);
+                    await inviteFamilyMember(inviteId.trim());
                     setInviteId("");
                     Alert.alert(t("family.title"), t("family.invited"));
                   })
@@ -129,11 +144,21 @@ export function FamilySection() {
         </View>
       ) : (
         <View style={styles.block}>
+          {!canCreateFamily ? (
+            <View style={[styles.lockBox, { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primary, borderRadius: theme.radii.md }]}>
+              <MaterialCommunityIcons color={theme.colors.primary} name="account-multiple-plus" size={20} />
+              <View style={styles.lockText}>
+                <Text style={[styles.lockTitle, { color: theme.colors.text }]}>{t("family.subscribeFirst")}</Text>
+                <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{t("family.subscribeFirstHint")}</Text>
+              </View>
+            </View>
+          ) : null}
+          {!canCreateFamily ? <Button label={t("subscription.title")} icon="credit-card-outline" variant="secondary" onPress={() => navigation.navigate("Subscription" as never)} style={styles.spaced} /> : null}
           <Field label={t("family.create")} placeholder={t("family.namePlaceholder")} value={name} onChangeText={setName} />
           <Button
             label={t("family.create")}
             icon="home-plus"
-            disabled={name.trim().length < 1}
+            disabled={name.trim().length < 1 || !canCreateFamily}
             loading={busy}
             onPress={() =>
               void run(async () => {
@@ -169,5 +194,8 @@ const styles = StyleSheet.create({
   memberBody: { flex: 1, minWidth: 0 },
   memberName: { fontSize: 15, fontWeight: "800" },
   memberMeta: { fontSize: 12, fontWeight: "600", marginTop: 2 },
+  lockBox: { alignItems: "flex-start", borderWidth: 1, flexDirection: "row", gap: 10, marginTop: 10, padding: 12 },
+  lockText: { flex: 1, minWidth: 0 },
+  lockTitle: { fontSize: 14, fontWeight: "900" },
   spaced: { marginTop: 12 }
 });
