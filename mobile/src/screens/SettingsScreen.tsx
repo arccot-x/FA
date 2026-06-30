@@ -1,12 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
 import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { ProfileEditorModal } from "./ProfileEditorModal";
 import { FamilySection } from "./FamilySection";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme, useThemeContext } from "../theme";
@@ -16,11 +18,14 @@ import type { Locale } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
 import { useReminders } from "../utils/RemindersProvider";
 import { useAppLock } from "../utils/AppLockProvider";
+import { useAiSettings } from "../utils/AiProvider";
+import { TutorialTarget, useTutorial } from "../utils/TutorialProvider";
 import { exportTransactionsCsv } from "../utils/exportData";
 import { CURRENCIES, toNumber } from "../utils/money";
 import type { CurrencyCode } from "../utils/money";
 
 const APP_VERSION = "0.2.0";
+type SettingsTab = "general" | "money" | "family" | "account";
 
 export function SettingsScreen() {
   const navigation = useNavigation();
@@ -30,10 +35,14 @@ export function SettingsScreen() {
   const { currency, setCurrency } = useCurrency();
   const { enabled: remindersEnabled, daysBefore, setEnabled: setRemindersEnabled, setDaysBefore } = useReminders();
   const { enabled: lockEnabled, setEnabled: setLockEnabled } = useAppLock();
-  const { user, load, loading, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle, transactions, deleteAccount } = useFinanceStore();
+  const { enabled: aiEnabled, setEnabled: setAiEnabled } = useAiSettings();
+  const tutorial = useTutorial();
+  const { user, load, loading, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle, transactions, deleteAccount, updateProfile } = useFinanceStore();
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   const toggleReminders = async (next: boolean) => {
     const ok = await setRemindersEnabled(next);
@@ -71,6 +80,12 @@ export function SettingsScreen() {
     { value: "light", label: t("settings.themeLight") },
     { value: "dark", label: t("settings.themeDark") }
   ];
+  const tabSegments: { value: SettingsTab; label: string }[] = [
+    { value: "general", label: t("settings.general") },
+    { value: "money", label: t("settings.money") },
+    { value: "family", label: t("family.title") },
+    { value: "account", label: t("settings.account") }
+  ];
 
   return (
     <Screen title={t("settings.title")}>
@@ -79,88 +94,128 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
       >
-        <Section delay={0} title={t("settings.appearance")} theme={theme}>
-          <Text style={[styles.rowLabel, { color: theme.colors.subtleText }]}>{t("settings.theme")}</Text>
-          <SegmentedControl segments={themeSegments} value={mode} onChange={setMode} />
-        </Section>
+        <TutorialTarget id="settings.tabs">
+          <Animated.View entering={FadeInDown.duration(320)} style={styles.tabs}>
+            <SettingsTabBar tabs={tabSegments} value={activeTab} onChange={setActiveTab} theme={theme} />
+          </Animated.View>
+        </TutorialTarget>
 
-        <Section delay={60} title={t("settings.language")} theme={theme}>
-          <View style={styles.optionList}>
-            {LOCALES.map((item) => (
-              <OptionRow key={item.value} label={item.label} active={locale === item.value} onPress={() => setLocale(item.value as Locale)} theme={theme} />
-            ))}
-          </View>
-        </Section>
+        {activeTab === "general" ? (
+          <>
+            <Section delay={40} title={t("settings.appearance")} theme={theme}>
+              <Text style={[styles.rowLabel, { color: theme.colors.subtleText }]}>{t("settings.theme")}</Text>
+              <SegmentedControl segments={themeSegments} value={mode} onChange={setMode} />
+            </Section>
 
-        <Section delay={120} title={t("settings.currency")} theme={theme}>
-          <View style={styles.optionList}>
-            {CURRENCIES.map((item) => (
-              <OptionRow key={item.code} label={`${item.symbol}  ${item.label}`} active={currency === item.code} onPress={() => setCurrency(item.code as CurrencyCode)} theme={theme} />
-            ))}
-          </View>
-        </Section>
-
-        <Animated.View entering={FadeInDown.delay(140).duration(360)} style={styles.section}>
-          <FamilySection />
-        </Animated.View>
-
-        <Section delay={150} title={t("settings.notifications")} theme={theme}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("reminders.title")}</Text>
-              <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("reminders.hint")}</Text>
-            </View>
-            <Switch value={remindersEnabled} onValueChange={(next) => void toggleReminders(next)} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
-          </View>
-          {remindersEnabled ? (
-            <View>
-              <Text style={[styles.rowLabel, { color: theme.colors.subtleText, marginTop: 4 }]}>{t("reminders.daysBefore")}</Text>
-              <View style={styles.daysRow}>
-                {[1, 2, 3, 5, 7].map((day) => (
-                  <Chip key={day} label={String(day)} selected={daysBefore === day} onPress={() => setDaysBefore(day)} basis="17%" />
+            <Section delay={80} title={t("settings.language")} theme={theme}>
+              <View style={styles.optionList}>
+                {LOCALES.map((item) => (
+                  <OptionRow key={item.value} label={item.label} active={locale === item.value} onPress={() => setLocale(item.value as Locale)} theme={theme} />
                 ))}
               </View>
-            </View>
-          ) : null}
-        </Section>
+            </Section>
 
-        <Section delay={170} title={t("security.title")} theme={theme}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("security.appLock")}</Text>
-              <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("security.appLockHint")}</Text>
-            </View>
-            <Switch value={lockEnabled} onValueChange={(next) => void toggleLock(next)} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
-          </View>
-        </Section>
-
-        <Section delay={195} title={t("dataExport.title")} theme={theme}>
-          <Text style={[styles.switchMeta, { color: theme.colors.subtleText, marginBottom: 12 }]}>{t("dataExport.hint")}</Text>
-          <Button label={t("dataExport.button")} icon="file-export" variant="secondary" loading={exporting} onPress={() => void runExport()} />
-        </Section>
-
-        <Section delay={210} title={t("settings.account")} theme={theme}>
-          {user ? (
-            <View style={[styles.account, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
-              <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
-                <Text style={[styles.avatarText, { color: theme.colors.primary }]}>{(user.name || user.email).slice(0, 1).toUpperCase()}</Text>
+            <Section delay={120} title={t("settings.notifications")} theme={theme}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchText}>
+                  <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("reminders.title")}</Text>
+                  <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("reminders.hint")}</Text>
+                </View>
+                <Switch value={remindersEnabled} onValueChange={(next) => void toggleReminders(next)} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
               </View>
-              <View style={styles.accountText}>
-                <Text style={[styles.accountName, { color: theme.colors.text }]} numberOfLines={1}>
-                  {user.name}
-                </Text>
-                <Text style={[styles.accountEmail, { color: theme.colors.subtleText }]} numberOfLines={1}>
-                  {user.email}
-                </Text>
+              {remindersEnabled ? (
+                <View>
+                  <Text style={[styles.rowLabel, { color: theme.colors.subtleText, marginTop: 4 }]}>{t("reminders.daysBefore")}</Text>
+                  <View style={styles.daysRow}>
+                    {[1, 2, 3, 5, 7].map((day) => (
+                      <Chip key={day} label={String(day)} selected={daysBefore === day} onPress={() => setDaysBefore(day)} basis="17%" />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+            </Section>
+
+            <Section delay={160} title={t("security.title")} theme={theme}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchText}>
+                  <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("security.appLock")}</Text>
+                  <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("security.appLockHint")}</Text>
+                </View>
+                <Switch value={lockEnabled} onValueChange={(next) => void toggleLock(next)} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
               </View>
+            </Section>
+
+            <Section delay={200} title={t("ai.title")} theme={theme}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchText}>
+                  <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("ai.enable")}</Text>
+                  <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("ai.hint")}</Text>
+                </View>
+                <Switch value={aiEnabled} onValueChange={(next) => void setAiEnabled(next)} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
+              </View>
+            </Section>
+
+            <Section delay={240} title={t("help.title")} theme={theme}>
+              <Button label={t("help.startTutorial")} icon="map-marker-path" variant="secondary" onPress={() => tutorial.start()} />
+            </Section>
+          </>
+        ) : null}
+
+        {activeTab === "money" ? (
+          <>
+            <Section delay={40} title={t("settings.currency")} theme={theme}>
+              <View style={styles.optionList}>
+                {CURRENCIES.map((item) => (
+                  <OptionRow key={item.code} label={`${item.symbol}  ${item.label}`} active={currency === item.code} onPress={() => setCurrency(item.code as CurrencyCode)} theme={theme} />
+                ))}
+              </View>
+            </Section>
+
+            <Section delay={80} title={t("income.title")} theme={theme}>
+              <Text style={[styles.switchMeta, { color: theme.colors.subtleText, marginBottom: 4 }]}>{t("income.variableHint")}</Text>
+              <Button label={t("settings.incomeSettings")} icon="cash-multiple" variant="secondary" onPress={() => setIncomeOpen(true)} />
+            </Section>
+
+            <Section delay={120} title={t("dataExport.title")} theme={theme}>
+              <Text style={[styles.switchMeta, { color: theme.colors.subtleText, marginBottom: 12 }]}>{t("dataExport.hint")}</Text>
+              <Button label={t("dataExport.button")} icon="file-export" variant="secondary" loading={exporting} onPress={() => void runExport()} />
+            </Section>
+          </>
+        ) : null}
+
+        {activeTab === "family" ? (
+          <Animated.View entering={FadeInDown.delay(40).duration(360)} style={styles.section}>
+            <FamilySection />
+          </Animated.View>
+        ) : null}
+
+        {activeTab === "account" ? (
+          <Section delay={40} title={t("settings.account")} theme={theme}>
+            {user ? (
+              <View style={[styles.account, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
+                <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
+                  <Text style={[styles.avatarText, { color: theme.colors.primary }]}>{(user.name || user.email).slice(0, 1).toUpperCase()}</Text>
+                </View>
+                <View style={styles.accountText}>
+                  <Text style={[styles.accountName, { color: theme.colors.text }]} numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  <Text style={[styles.accountEmail, { color: theme.colors.subtleText }]} numberOfLines={1}>
+                    {user.email}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+            <View style={styles.accountActions}>
+              <Button label={t("profile.title")} icon="account-edit" variant="secondary" onPress={() => setProfileOpen(true)} />
+              <Button label={t("subscription.title")} icon="credit-card-outline" variant="secondary" onPress={() => navigation.navigate("Subscription" as never)} />
+              <Button label={t("help.title")} icon="help-circle-outline" variant="secondary" onPress={() => navigation.navigate("Help" as never)} />
+              <Button label={t("account.changePassword")} icon="lock-reset" variant="secondary" onPress={() => setChangePwOpen(true)} />
+              <Button label={t("settings.signOut")} icon="logout" variant="secondary" onPress={() => void logout()} />
+              <Button label={t("account.deleteAccount")} icon="account-remove" variant="danger" onPress={confirmDeleteAccount} />
             </View>
-          ) : null}
-          <Button label={t("settings.incomeSettings")} icon="cash-multiple" variant="secondary" onPress={() => setIncomeOpen(true)} style={styles.spaced} />
-          <Button label={t("subscription.title")} icon="credit-card-outline" variant="secondary" onPress={() => navigation.navigate("Subscription" as never)} style={styles.spaced} />
-          <Button label={t("account.changePassword")} icon="lock-reset" variant="secondary" onPress={() => setChangePwOpen(true)} style={styles.spaced} />
-          <Button label={t("settings.signOut")} icon="logout" variant="secondary" onPress={() => void logout()} style={styles.spaced} />
-          <Button label={t("account.deleteAccount")} icon="account-remove" variant="danger" onPress={confirmDeleteAccount} style={styles.spaced} />
-        </Section>
+          </Section>
+        ) : null}
 
         <View style={styles.about}>
           <MaterialCommunityIcons color={theme.colors.muted} name="wallet" size={20} />
@@ -184,11 +239,12 @@ export function SettingsScreen() {
       />
 
       <ChangePasswordModal visible={changePwOpen} onClose={() => setChangePwOpen(false)} />
+      <ProfileEditorModal visible={profileOpen} user={user} onClose={() => setProfileOpen(false)} onSave={updateProfile} />
     </Screen>
   );
 }
 
-function Section({ title, children, theme, delay }: { title: string; children: React.ReactNode; theme: ReturnType<typeof useTheme>; delay: number }) {
+function Section({ title, children, theme, delay }: { title: string; children: ReactNode; theme: ReturnType<typeof useTheme>; delay: number }) {
   return (
     <Animated.View entering={FadeInDown.delay(delay).duration(360)} style={styles.section}>
       <Text style={[styles.sectionTitle, { color: theme.colors.subtleText }]}>{title}</Text>
@@ -206,8 +262,58 @@ function OptionRow({ label, active, onPress, theme }: { label: string; active: b
   );
 }
 
+function SettingsTabBar({
+  tabs,
+  value,
+  onChange,
+  theme
+}: {
+  tabs: { value: SettingsTab; label: string }[];
+  value: SettingsTab;
+  onChange: (value: SettingsTab) => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const icons: Record<SettingsTab, ComponentProps<typeof MaterialCommunityIcons>["name"]> = {
+    general: "tune-variant",
+    money: "cash-multiple",
+    family: "account-group-outline",
+    account: "account-circle-outline"
+  };
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroller}>
+      {tabs.map((tab) => {
+        const active = tab.value === value;
+        return (
+          <PressableScale
+            key={tab.value}
+            onPress={() => onChange(tab.value)}
+            style={[
+              styles.tabPill,
+              {
+                backgroundColor: active ? theme.colors.primarySoft : theme.colors.surface,
+                borderColor: active ? theme.colors.primary : theme.colors.border,
+                borderRadius: theme.radii.pill
+              }
+            ]}
+          >
+            <MaterialCommunityIcons color={active ? theme.colors.primary : theme.colors.subtleText} name={icons[tab.value]} size={18} />
+            <Text style={[styles.tabPillText, { color: active ? theme.colors.primary : theme.colors.subtleText }]} numberOfLines={1}>
+              {tab.label}
+            </Text>
+          </PressableScale>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 96 },
+  tabs: { marginBottom: 18 },
+  tabScroller: { gap: 8, paddingRight: 4 },
+  tabPill: { alignItems: "center", borderWidth: 1, flexDirection: "row", gap: 7, minHeight: 42, paddingHorizontal: 13 },
+  tabPillText: { fontSize: 13, fontWeight: "900" },
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 0.5, marginBottom: 10, marginLeft: 4, textTransform: "uppercase" },
   card: { borderWidth: 1, gap: 10, padding: 16 },
@@ -226,7 +332,7 @@ const styles = StyleSheet.create({
   accountText: { flex: 1, minWidth: 0 },
   accountName: { fontSize: 16, fontWeight: "800" },
   accountEmail: { fontSize: 13, fontWeight: "600", marginTop: 2 },
-  spaced: { marginTop: 12 },
+  accountActions: { gap: 12, marginTop: 12 },
   about: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", marginTop: 8 },
   aboutText: { fontSize: 13, fontWeight: "700" }
 });

@@ -40,6 +40,7 @@ type FinanceState = {
   requestPasswordReset: (input: { email: string }) => Promise<void>;
   resetPassword: (input: { email: string; code: string; newPassword: string }) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (input: { name: string; email: string }) => Promise<void>;
   load: () => Promise<void>;
   processPendingSync: () => Promise<void>;
   addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope, type?: import("../types").TransactionType) => Promise<void>;
@@ -57,7 +58,8 @@ type FinanceState = {
   completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string; scope?: TransactionScope }) => Promise<void>;
   deleteTransaction: (transaction: Transaction) => Promise<void>;
   deleteBill: (bill: BillOccurrence) => Promise<void>;
-  recordSnap: (uri: string) => Promise<void>;
+  recordSnap: (uri: string, scan?: { amount?: number; category?: ExpenseCategory; merchant?: string; notes?: string; aiScannedAt?: string }) => Promise<void>;
+  saveReceiptScan: (transaction: Transaction, scan: { amount?: number; category?: ExpenseCategory; merchant?: string; notes?: string }) => Promise<void>;
   addVaultDocument: (input: { uri: string; name: string; mimeType?: string; title: string; category: import("../types").VaultCategory }) => Promise<void>;
   deleteVaultDocument: (document: VaultDocument) => Promise<void>;
   refreshVault: () => Promise<void>;
@@ -87,6 +89,12 @@ async function clearSession() {
 
 function isLocalId(id: string) {
   return id.startsWith("local-") || id.startsWith("snap-");
+}
+
+function toOptionalNumber(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function markOfflineMutation(set: (state: Partial<FinanceState>) => void) {
@@ -334,7 +342,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         } else if (item.kind === "deleteTransaction") {
           await api.deleteTransaction({ userId: user.id, transactionId: item.payload.transactionId });
         } else if (item.kind === "uploadSnap") {
-          await api.uploadSnapExpense({ userId: user.id, uri: item.payload.uri });
+          await api.uploadSnapExpense({ userId: user.id, ...item.payload });
         } else if (item.kind === "addBill") {
           await api.addBillTemplate({ userId: user.id, ...item.payload });
         } else if (item.kind === "deleteBill") {
@@ -449,6 +457,20 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       offline: false,
       authError: undefined
     });
+  },
+
+  updateProfile: async (input) => {
+    const user = requireUser(get().user);
+    const nextUser = { ...user, name: input.name.trim(), email: input.email.trim().toLowerCase() };
+    set({ user: nextUser });
+    try {
+      const saved = await api.updateProfile({ userId: user.id, name: nextUser.name, email: nextUser.email });
+      set({ user: saved });
+      void saveCache("user", saved);
+    } catch (error) {
+      set({ user });
+      throw error;
+    }
   },
 
   addBill: async (input) => {
@@ -666,13 +688,15 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }
   },
 
-  recordSnap: async (uri) => {
+  recordSnap: async (uri, scan) => {
     const user = requireUser(get().user);
     const optimistic: Transaction = {
       id: `snap-${Date.now()}`,
-      amount: null,
-      category: null,
-      merchant: "Pending receipt",
+      amount: scan?.amount ?? null,
+      category: scan?.category ?? null,
+      merchant: scan?.merchant || "Pending receipt",
+      notes: scan?.notes,
+      aiScannedAt: scan?.aiScannedAt,
       status: "PENDING_DETAILS",
       source: "SNAP_SAVE",
       occurredAt: new Date().toISOString(),
@@ -681,10 +705,44 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     set({ transactions: [optimistic, ...get().transactions] });
     try {
-      await api.uploadSnapExpense({ userId: user.id, uri });
+      await api.uploadSnapExpense({ userId: user.id, uri, ...scan });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("uploadSnap", { uri }));
+      const queue = await enqueueOfflineItem(makeQueueItem("uploadSnap", { uri, ...scan }));
+      set({ pendingSyncCount: queue.length });
+      markOfflineMutation(set);
+    }
+  },
+
+  saveReceiptScan: async (transaction, scan) => {
+    const user = requireUser(get().user);
+    const nextScan = {
+      amount: scan.amount ?? toOptionalNumber(transaction.amount),
+      category: scan.category ?? transaction.category ?? undefined,
+      merchant: scan.merchant ?? transaction.merchant ?? undefined,
+      notes: scan.notes ?? transaction.notes ?? undefined
+    };
+    const aiScannedAt = new Date().toISOString();
+    const replace = (item: Transaction) =>
+      item.id === transaction.id
+        ? {
+            ...item,
+            amount: nextScan.amount ?? item.amount,
+            category: nextScan.category ?? item.category,
+            merchant: nextScan.merchant ?? item.merchant,
+            notes: nextScan.notes ?? item.notes,
+            aiScannedAt
+          }
+        : item;
+
+    set({ transactions: get().transactions.map(replace) });
+
+    if (isLocalId(transaction.id)) return;
+
+    try {
+      await api.updateTransaction({ userId: user.id, transactionId: transaction.id, ...nextScan, status: "PENDING_DETAILS", aiScannedAt });
+    } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("updateTransaction", { transactionId: transaction.id, ...nextScan, status: "PENDING_DETAILS", aiScannedAt }));
       set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }

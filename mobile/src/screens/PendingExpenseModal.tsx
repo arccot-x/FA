@@ -7,7 +7,9 @@ import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { scanReceipt } from "../utils/ai";
+import { useAiSettings } from "../utils/AiProvider";
 import { toNumber } from "../utils/money";
+import { mergeReceiptScan, shouldAutoScanReceipt } from "../utils/receiptScan";
 import type { ExpenseCategory, Transaction, TransactionScope } from "../types";
 
 type PendingExpenseModalProps = {
@@ -20,8 +22,10 @@ type PendingExpenseModalProps = {
 export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }: PendingExpenseModalProps) {
   const { t } = useI18n();
   const theme = useTheme();
+  const { enabled: aiEnabled } = useAiSettings();
   const userId = useFinanceStore((state) => state.user?.id);
   const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
+  const saveReceiptScan = useFinanceStore((state) => state.saveReceiptScan);
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [notes, setNotes] = useState("");
@@ -52,11 +56,15 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
     setScanning(true);
     try {
       const result = await scanReceipt(receiptUri, userId);
+      const scan = mergeReceiptScan({ amount, merchant, category, notes }, result);
       // Fill empty fields only, so we don't clobber anything the user typed.
-      if (result.amount && !Number(amount)) setAmount(String(result.amount));
-      if (result.merchant && !merchant.trim()) setMerchant(result.merchant);
-      if (result.category) setCategory(result.category);
-      if (result.items && !notes.trim()) setNotes(result.items);
+      if (scan.amount) setAmount(String(scan.amount));
+      if (scan.merchant) setMerchant(scan.merchant);
+      if (scan.category) setCategory(scan.category);
+      if (scan.notes) setNotes(scan.notes);
+      if (transaction) {
+        await saveReceiptScan(transaction, scan);
+      }
     } catch {
       if (!auto) Alert.alert(t("ai.title"), t("ai.failed"));
     } finally {
@@ -66,13 +74,14 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
 
   // Auto-scan once when a pending receipt with an image opens.
   useEffect(() => {
-    if (transaction && isPending && receiptUri && userId && scannedFor.current !== transaction.id) {
-      scannedFor.current = transaction.id;
+    const transactionId = transaction?.id;
+    if (shouldAutoScanReceipt({ aiEnabled, transaction, receiptUri, userId }) && transactionId && scannedFor.current !== transactionId) {
+      scannedFor.current = transactionId;
       void runScan(true);
     }
     if (!transaction) scannedFor.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transaction, receiptUri, userId]);
+  }, [transaction, receiptUri, userId, aiEnabled]);
 
   const save = async () => {
     const parsedAmount = Number(amount);
@@ -110,9 +119,11 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
               icon="robot-outline"
               variant="secondary"
               loading={scanning}
+              disabled={!aiEnabled}
               onPress={() => void runScan(false)}
               style={styles.scanButton}
             />
+            {!aiEnabled ? <Text style={[styles.aiDisabled, { color: theme.colors.subtleText }]}>{t("ai.disabledHint")}</Text> : null}
           </View>
         ) : null}
 
@@ -202,6 +213,12 @@ const styles = StyleSheet.create({
   },
   scanButton: {
     marginTop: 10
+  },
+  aiDisabled: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 8,
+    textAlign: "center"
   },
   scanOverlay: {
     alignItems: "center",

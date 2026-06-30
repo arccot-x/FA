@@ -11,6 +11,7 @@ import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
+import { TutorialTarget } from "../utils/TutorialProvider";
 import type { BillOccurrence, ExpenseCategory, TransactionScope } from "../types";
 import { toNumber } from "../utils/money";
 
@@ -93,15 +94,17 @@ export function BillCenterScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
           <Animated.View entering={FadeInDown.duration(400)}>
-            <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.xl, ...theme.shadow("sm") }]}>
-              <View>
-                <Text style={[styles.summaryLabel, { color: theme.colors.subtleText }]}>{t("bills.remaining")}</Text>
-                <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{money(totalUnpaid)}</Text>
+            <TutorialTarget id="bills.primary">
+              <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.xl, ...theme.shadow("sm") }]}>
+                <View>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.subtleText }]}>{t("bills.remaining")}</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{money(totalUnpaid)}</Text>
+                </View>
+                <View style={[styles.summaryIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.lg }]}>
+                  <MaterialCommunityIcons color={theme.colors.primary} name="calendar-check" size={28} />
+                </View>
               </View>
-              <View style={[styles.summaryIcon, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.lg }]}>
-                <MaterialCommunityIcons color={theme.colors.primary} name="calendar-check" size={28} />
-              </View>
-            </View>
+            </TutorialTarget>
             {bills.unpaid.length > 0 ? <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t("bills.unpaid")}</Text> : null}
           </Animated.View>
         }

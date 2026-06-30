@@ -156,6 +156,7 @@ export const en = {
     scan: "Scan with AI",
     scanning: "Reading receipt…",
     failed: "Couldn't read the receipt. Please enter the details manually.",
+    disabledHint: "AI receipt scanning is off in Settings.",
     needKey: "Add your Grok API key in Settings → AI receipt scan first.",
     saved: "Saved"
   },
@@ -247,6 +248,7 @@ export const en = {
     income: "Income",
     expenses: "Expenses",
     incomeVsExpenses: "Income vs expenses",
+    netFlow: "Net",
     categoryMix: "Category mix",
     addExpenses: "Add expenses to see category trends.",
     comparisonLabel: "This month",
@@ -257,6 +259,8 @@ export const en = {
   },
   settings: {
     title: "Settings",
+    general: "General",
+    money: "Money",
     appearance: "Appearance",
     theme: "Theme",
     themeSystem: "System",
@@ -271,6 +275,48 @@ export const en = {
     about: "About",
     version: "Version",
     madeWith: "Frictionless Finance"
+  },
+  profile: {
+    title: "Profile",
+    save: "Save profile",
+    invalid: "Enter a name and valid email address.",
+    saveFailed: "Profile could not be saved."
+  },
+  help: {
+    title: "Help",
+    subtitle: "Answers and walkthroughs",
+    tutorialTitle: "Take the guided tour",
+    tutorialBody: "Walk through the main pages with highlighted areas and short notes.",
+    startTutorial: "Start tutorial",
+    snapQ: "How do receipt photos work?",
+    snapA: "Use Quick add, then camera or gallery. If AI scanning is enabled, the app reads the receipt first and saves the amount, merchant, category and notes onto the pending receipt.",
+    pendingQ: "Why is a receipt pending?",
+    pendingA: "Pending receipts are waiting for your review. Open one, adjust the fields if needed, choose personal or house money, then save the expense.",
+    billsQ: "How should I track bills?",
+    billsA: "Create bills with a due day and amount. Unpaid bills stay visible until you mark them paid, skipped or edit that month's amount.",
+    vaultQ: "What belongs in Vault?",
+    vaultA: "Vault is for documents and receipts you want to keep, such as leases, tax files, insurance, warranties and banking records.",
+    familyQ: "How does family sharing work?",
+    familyA: "Family plans unlock house money, shared bills and member invites. The family owner manages the plan and invites members by account ID.",
+    aiQ: "Can I turn AI receipt scanning off?",
+    aiA: "Yes. Settings → General → AI receipt scan controls automatic scanning for camera and gallery photos. Manual scan is also disabled while it is off.",
+    exportQ: "Can I export my data?",
+    exportA: "Yes. Settings → Money → Data exports your transactions as a CSV file."
+  },
+  tutorial: {
+    next: "Next",
+    skip: "Skip",
+    finish: "Finish",
+    homeTitle: "Quick add",
+    homeBody: "Tap here to add an expense, income, receipt photo or gallery image.",
+    billsTitle: "Bills",
+    billsBody: "Track upcoming bills here and mark them paid when they are settled.",
+    vaultTitle: "Vault",
+    vaultBody: "Save important documents and filter receipt history from this area.",
+    insightsTitle: "Insights",
+    insightsBody: "Review income flow, category mix, trends, budgets and goals here.",
+    settingsTitle: "Settings tabs",
+    settingsBody: "Use these tabs to jump between general preferences, money settings, family tools and account actions."
   },
   category: {
     GROCERIES: "Groceries",
@@ -298,7 +344,8 @@ export const en = {
   },
   camera: {
     needAccess: "Camera access is needed for receipts",
-    allow: "Allow camera"
+    allow: "Allow camera",
+    saving: "Saving receipt..."
   },
   activity: {
     title: "All activity",

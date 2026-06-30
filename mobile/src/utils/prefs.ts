@@ -27,6 +27,7 @@ export const PREF_KEYS = {
   remindersEnabled: "pref-reminders-enabled",
   remindersDays: "pref-reminders-days",
   onboarded: "pref-onboarded",
+  tutorialCompleted: "pref-tutorial-completed",
   aiEnabled: "pref-ai-enabled",
   aiKey: "pref-ai-key",
   subscription: "pref-subscription"

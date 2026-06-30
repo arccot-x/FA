@@ -128,6 +128,7 @@ export async function updateTransaction(input: {
   merchant?: string;
   notes?: string;
   status?: "CLEARED" | "PENDING_DETAILS";
+  aiScannedAt?: string | null;
   scope?: TransactionScope;
   familyId?: string | null;
 }) {
@@ -139,6 +140,7 @@ export async function updateTransaction(input: {
       merchant: input.merchant,
       notes: input.notes,
       status: input.status,
+      aiScannedAt: input.aiScannedAt,
       scope: input.scope,
       familyId: input.familyId
     })
@@ -237,6 +239,13 @@ export async function deleteAccount(input: { userId: string }) {
   await request<void>(`/users/${input.userId}`, { method: "DELETE" });
 }
 
+export async function updateProfile(input: { userId: string; name: string; email: string }) {
+  return request<User>(`/users/${input.userId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name: input.name, email: input.email })
+  });
+}
+
 export async function scanReceiptRemote(userId: string, image: string) {
   return request<{ amount?: number; merchant?: string; category?: ExpenseCategory; items?: string }>(`/ai/scan/${userId}`, {
     method: "POST",
@@ -313,9 +322,14 @@ async function uploadForm<T>(path: string, form: FormData): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function uploadSnapExpense(params: { userId: string; uri: string }) {
+export async function uploadSnapExpense(params: { userId: string; uri: string; amount?: number; category?: ExpenseCategory; merchant?: string; notes?: string; aiScannedAt?: string }) {
   const form = new FormData();
   form.append("pending", "true");
+  if (params.amount !== undefined) form.append("amount", String(params.amount));
+  if (params.category) form.append("category", params.category);
+  if (params.merchant) form.append("merchant", params.merchant);
+  if (params.notes) form.append("notes", params.notes);
+  if (params.aiScannedAt) form.append("aiScannedAt", params.aiScannedAt);
   form.append("file", {
     uri: params.uri,
     name: `receipt-${Date.now()}.jpg`,

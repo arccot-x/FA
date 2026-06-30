@@ -18,6 +18,7 @@ const transactionUploadSchema = z.object({
   category: z.nativeEnum(ExpenseCategory).optional(),
   merchant: z.string().optional(),
   notes: z.string().optional(),
+  aiScannedAt: z.coerce.date().optional(),
   pending: z.coerce.boolean().default(false)
 });
 
@@ -46,6 +47,7 @@ uploadsRouter.post(
             category: input.category,
             merchant: input.merchant,
             notes: input.notes,
+            aiScannedAt: input.aiScannedAt,
             source: TransactionSource.SNAP_SAVE,
             status:
               input.pending || input.amount === undefined || input.category === undefined

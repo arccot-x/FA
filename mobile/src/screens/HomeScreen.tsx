@@ -14,6 +14,9 @@ import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
+import { useAiSettings } from "../utils/AiProvider";
+import { scanReceipt } from "../utils/ai";
+import { TutorialTarget } from "../utils/TutorialProvider";
 import { summariseIncome } from "../utils/income";
 import { categoryIcon } from "../constants/options";
 import type { ExpenseCategory, Transaction } from "../types";
@@ -24,6 +27,7 @@ export function HomeScreen() {
   const theme = useTheme();
   const { t, locale } = useI18n();
   const money = useMoney();
+  const { enabled: aiEnabled } = useAiSettings();
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
@@ -248,13 +252,15 @@ export function HomeScreen() {
         }
       />
 
-      <PressableScale
-        accessibilityLabel={t("home.quickAdd")}
-        style={[styles.fab, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.pill, ...theme.shadow("lg") }]}
-        onPress={() => setQuickAddOpen(true)}
-      >
-        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={34} />
-      </PressableScale>
+      <TutorialTarget id="home.quickAdd" style={styles.fabTarget}>
+        <PressableScale
+          accessibilityLabel={t("home.quickAdd")}
+          style={[styles.fab, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.pill, ...theme.shadow("lg") }]}
+          onPress={() => setQuickAddOpen(true)}
+        >
+          <MaterialCommunityIcons color="#FFFFFF" name="plus" size={34} />
+        </PressableScale>
+      </TutorialTarget>
 
       <QuickAddModal
         visible={quickAddOpen}
@@ -266,6 +272,15 @@ export function HomeScreen() {
         }}
         onAttachImage={async (uri) => {
           setQuickAddOpen(false);
+          if (aiEnabled && user?.id) {
+            try {
+              const scan = await scanReceipt(uri, user.id);
+              await recordSnap(uri, { amount: scan.amount, category: scan.category, merchant: scan.merchant, notes: scan.items, aiScannedAt: new Date().toISOString() });
+              return;
+            } catch {
+              // Save the photo anyway; the user can scan manually from the receipt.
+            }
+          }
           await recordSnap(uri);
         }}
       />
@@ -477,13 +492,17 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     textAlign: "center"
   },
-  fab: {
-    alignItems: "center",
+  fabTarget: {
     bottom: 24,
     height: 62,
-    justifyContent: "center",
     position: "absolute",
     right: 20,
+    width: 62
+  },
+  fab: {
+    alignItems: "center",
+    height: 62,
+    justifyContent: "center",
     width: 62
   }
 });

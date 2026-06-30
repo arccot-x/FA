@@ -1,6 +1,6 @@
 import "react-native-gesture-handler";
 import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/native";
-import type { Theme as NavTheme } from "@react-navigation/native";
+import type { NavigatorScreenParams, Theme as NavTheme } from "@react-navigation/native";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as NavigationBar from "expo-navigation-bar";
@@ -21,6 +21,7 @@ import { BillCenterScreen } from "./src/screens/BillCenterScreen";
 import { VaultScreen } from "./src/screens/VaultScreen";
 import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { HelpScreen } from "./src/screens/HelpScreen";
 import { SubscriptionScreen } from "./src/screens/SubscriptionScreen";
 import { CameraScreen } from "./src/screens/CameraScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
@@ -35,13 +36,17 @@ import { GoalsProvider } from "./src/utils/GoalsProvider";
 import { RemindersProvider } from "./src/utils/RemindersProvider";
 import { AppLockProvider } from "./src/utils/AppLockProvider";
 import { SubscriptionProvider, useSubscription } from "./src/utils/SubscriptionProvider";
+import { AiProvider } from "./src/utils/AiProvider";
 import { getPref, PREF_KEYS, setPref } from "./src/utils/prefs";
+import { TutorialProvider } from "./src/utils/TutorialProvider";
+import { navigationRef } from "./src/utils/navigation";
 import { toNumber } from "./src/utils/money";
 
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<MainTabsParamList> | undefined;
   Camera: undefined;
   Subscription: undefined;
+  Help: undefined;
 };
 
 export type MainTabsParamList = {
@@ -147,12 +152,15 @@ function Root() {
             }}
           />
         ) : (
-          <NavigationContainer theme={navTheme}>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="MainTabs" component={MainTabs} />
-              <Stack.Screen name="Camera" component={CameraScreen} options={{ presentation: "fullScreenModal" }} />
-              <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: "modal" }} />
-            </Stack.Navigator>
+          <NavigationContainer ref={navigationRef} theme={navTheme}>
+            <TutorialProvider>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen name="Camera" component={CameraScreen} options={{ presentation: "fullScreenModal" }} />
+                <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: "modal" }} />
+                <Stack.Screen name="Help" component={HelpScreen} options={{ presentation: "modal" }} />
+              </Stack.Navigator>
+            </TutorialProvider>
           </NavigationContainer>
         )
       ) : (
@@ -174,7 +182,9 @@ export default function App() {
                   <RemindersProvider>
                     <AppLockProvider>
                       <SubscriptionProvider>
-                        <Root />
+                        <AiProvider>
+                          <Root />
+                        </AiProvider>
                       </SubscriptionProvider>
                     </AppLockProvider>
                   </RemindersProvider>

@@ -104,6 +104,7 @@ export type Transaction = {
   category?: ExpenseCategory | null;
   merchant?: string | null;
   notes?: string | null;
+  aiScannedAt?: string | null;
   type?: TransactionType;
   status: "CLEARED" | "PENDING_DETAILS";
   source: "MANUAL" | "SNAP_SAVE" | "IMPORT";

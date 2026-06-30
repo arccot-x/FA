@@ -10,6 +10,7 @@ import { vaultCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
+import { TutorialTarget } from "../utils/TutorialProvider";
 import type { VaultCategory, VaultDocument } from "../types";
 
 const folderOrder: VaultCategory[] = ["LEASE", "TAX", "INSURANCE", "BANKING", "WARRANTY", "RECEIPT", "MEDICAL", "OTHER"];
@@ -121,24 +122,26 @@ export function VaultScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
-          <View style={[styles.filterBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
-            <PressableScale
-              onPress={() => setFilter("all")}
-              style={[styles.filterButton, { backgroundColor: filter === "all" ? theme.colors.primarySoft : "transparent", borderRadius: theme.radii.pill }]}
-            >
-              <MaterialCommunityIcons color={filter === "all" ? theme.colors.primary : theme.colors.subtleText} name="folder-multiple" size={18} />
-              <Text style={[styles.filterText, { color: filter === "all" ? theme.colors.primary : theme.colors.subtleText }]}>{t("vault.allFiles")}</Text>
-            </PressableScale>
-            <PressableScale
-              onPress={() => setFilter("receipts")}
-              style={[styles.filterButton, { backgroundColor: filter === "receipts" ? theme.colors.primarySoft : "transparent", borderRadius: theme.radii.pill }]}
-            >
-              <MaterialCommunityIcons color={filter === "receipts" ? theme.colors.primary : theme.colors.subtleText} name="receipt" size={18} />
-              <Text style={[styles.filterText, { color: filter === "receipts" ? theme.colors.primary : theme.colors.subtleText }]}>
-                {t("vault.receiptHistory", { count: receiptCount })}
-              </Text>
-            </PressableScale>
-          </View>
+          <TutorialTarget id="vault.filters">
+            <View style={[styles.filterBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
+              <PressableScale
+                onPress={() => setFilter("all")}
+                style={[styles.filterButton, { backgroundColor: filter === "all" ? theme.colors.primarySoft : "transparent", borderRadius: theme.radii.pill }]}
+              >
+                <MaterialCommunityIcons color={filter === "all" ? theme.colors.primary : theme.colors.subtleText} name="folder-multiple" size={18} />
+                <Text style={[styles.filterText, { color: filter === "all" ? theme.colors.primary : theme.colors.subtleText }]}>{t("vault.allFiles")}</Text>
+              </PressableScale>
+              <PressableScale
+                onPress={() => setFilter("receipts")}
+                style={[styles.filterButton, { backgroundColor: filter === "receipts" ? theme.colors.primarySoft : "transparent", borderRadius: theme.radii.pill }]}
+              >
+                <MaterialCommunityIcons color={filter === "receipts" ? theme.colors.primary : theme.colors.subtleText} name="receipt" size={18} />
+                <Text style={[styles.filterText, { color: filter === "receipts" ? theme.colors.primary : theme.colors.subtleText }]}>
+                  {t("vault.receiptHistory", { count: receiptCount })}
+                </Text>
+              </PressableScale>
+            </View>
+          </TutorialTarget>
         }
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInDown.delay(index * 40).duration(320)} style={[styles.folder, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>

@@ -158,6 +158,7 @@ export const tr: Translations = {
     scan: "Yapay zeka ile tara",
     scanning: "Fiş okunuyor…",
     failed: "Fiş okunamadı. Lütfen bilgileri elle gir.",
+    disabledHint: "Yapay zeka ile fiş tarama Ayarlar'da kapalı.",
     needKey: "Önce Ayarlar → Yapay zeka ile fiş taramadan Grok API anahtarını ekle.",
     saved: "Kaydedildi"
   },
@@ -249,6 +250,7 @@ export const tr: Translations = {
     income: "Gelir",
     expenses: "Gider",
     incomeVsExpenses: "Gelir / Gider",
+    netFlow: "Net",
     categoryMix: "Kategori dağılımı",
     addExpenses: "Kategori eğilimleri için harcama ekle.",
     comparisonLabel: "Bu ay",
@@ -259,6 +261,8 @@ export const tr: Translations = {
   },
   settings: {
     title: "Ayarlar",
+    general: "Genel",
+    money: "Para",
     appearance: "Görünüm",
     theme: "Tema",
     themeSystem: "Sistem",
@@ -273,6 +277,48 @@ export const tr: Translations = {
     about: "Hakkında",
     version: "Sürüm",
     madeWith: "Frictionless Finance"
+  },
+  profile: {
+    title: "Profil",
+    save: "Profili kaydet",
+    invalid: "Bir ad ve geçerli e-posta adresi gir.",
+    saveFailed: "Profil kaydedilemedi."
+  },
+  help: {
+    title: "Yardım",
+    subtitle: "Cevaplar ve rehberler",
+    tutorialTitle: "Rehberli turu başlat",
+    tutorialBody: "Ana sayfaları vurgulanan alanlar ve kısa notlarla gez.",
+    startTutorial: "Turu başlat",
+    snapQ: "Fiş fotoğrafları nasıl çalışır?",
+    snapA: "Hızlı ekle'den kamera veya galeri kullan. Yapay zeka açıksa uygulama fişi önce okur ve tutar, işletme, kategori ve notları bekleyen fişe kaydeder.",
+    pendingQ: "Bir fiş neden beklemede?",
+    pendingA: "Bekleyen fişler onayını bekler. Aç, alanları gerekirse düzelt, kişisel ya da ev parasını seç ve harcamayı kaydet.",
+    billsQ: "Faturaları nasıl takip etmeliyim?",
+    billsA: "Ödeme günü ve tutarıyla fatura oluştur. Ödenmemiş faturalar, ödenene, atlanana veya o ayın tutarı düzenlenene kadar görünür kalır.",
+    vaultQ: "Kasaya ne koymalıyım?",
+    vaultA: "Kasa; kira sözleşmesi, vergi dosyası, sigorta, garanti ve banka kayıtları gibi saklamak istediğin belgeler ve fişler içindir.",
+    familyQ: "Aile paylaşımı nasıl çalışır?",
+    familyA: "Aile planları ev parasını, ortak faturaları ve üye davetlerini açar. Aile sahibi planı yönetir ve hesap kimliğiyle üye davet eder.",
+    aiQ: "Yapay zeka fiş taramayı kapatabilir miyim?",
+    aiA: "Evet. Ayarlar → Genel → Yapay zeka ile fiş tarama, kamera ve galeri fotoğrafları için otomatik taramayı kontrol eder. Kapalıyken manuel tarama da devre dışıdır.",
+    exportQ: "Verilerimi dışa aktarabilir miyim?",
+    exportA: "Evet. Ayarlar → Para → Veri, harcamalarını CSV dosyası olarak dışa aktarır."
+  },
+  tutorial: {
+    next: "İleri",
+    skip: "Atla",
+    finish: "Bitir",
+    homeTitle: "Hızlı ekle",
+    homeBody: "Harcama, gelir, fiş fotoğrafı veya galeri görseli eklemek için buraya dokun.",
+    billsTitle: "Faturalar",
+    billsBody: "Yaklaşan faturaları burada takip et ve ödendiğinde işaretle.",
+    vaultTitle: "Kasa",
+    vaultBody: "Önemli belgeleri kaydet ve fiş geçmişini bu alandan filtrele.",
+    insightsTitle: "Analiz",
+    insightsBody: "Gelir akışını, kategori dağılımını, eğilimleri, bütçeleri ve hedefleri burada incele.",
+    settingsTitle: "Ayar sekmeleri",
+    settingsBody: "Genel tercihler, para ayarları, aile araçları ve hesap işlemleri arasında geçmek için bu sekmeleri kullan."
   },
   category: {
     GROCERIES: "Market",
@@ -300,7 +346,8 @@ export const tr: Translations = {
   },
   camera: {
     needAccess: "Fişler için kamera erişimi gerekli",
-    allow: "Kameraya izin ver"
+    allow: "Kameraya izin ver",
+    saving: "Fiş kaydediliyor..."
   },
   activity: {
     title: "Tüm hareketler",

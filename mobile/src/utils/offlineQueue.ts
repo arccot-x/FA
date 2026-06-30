@@ -11,11 +11,11 @@ export type OfflineQueueItem =
   | {
       id: string;
       kind: "updateTransaction";
-      payload: { transactionId: string; amount: number; category: ExpenseCategory; merchant?: string; notes?: string; scope?: TransactionScope; familyId?: string | null };
+      payload: { transactionId: string; amount?: number; category?: ExpenseCategory; merchant?: string; notes?: string; status?: "CLEARED" | "PENDING_DETAILS"; aiScannedAt?: string | null; scope?: TransactionScope; familyId?: string | null };
       createdAt: string;
     }
   | { id: string; kind: "deleteTransaction"; payload: { transactionId: string }; createdAt: string }
-  | { id: string; kind: "uploadSnap"; payload: { uri: string }; createdAt: string }
+  | { id: string; kind: "uploadSnap"; payload: { uri: string; amount?: number; category?: ExpenseCategory; merchant?: string; notes?: string; aiScannedAt?: string }; createdAt: string }
   | {
       id: string;
       kind: "addBill";

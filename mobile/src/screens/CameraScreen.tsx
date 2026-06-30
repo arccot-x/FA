@@ -7,26 +7,44 @@ import { Button } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
+import { useAiSettings } from "../utils/AiProvider";
+import { scanReceipt } from "../utils/ai";
 
 export function CameraScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
   const { t } = useI18n();
+  const { enabled: aiEnabled } = useAiSettings();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [saving, setSaving] = useState(false);
+  const [savingLabel, setSavingLabel] = useState("");
   const recordSnap = useFinanceStore((state) => state.recordSnap);
+  const userId = useFinanceStore((state) => state.user?.id);
 
   const capture = async () => {
     if (!cameraRef.current || saving) return;
     setSaving(true);
+    setSavingLabel(t("camera.saving"));
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.72 });
       if (photo?.uri) {
+        if (aiEnabled && userId) {
+          try {
+            setSavingLabel(t("ai.scanning"));
+            const scan = await scanReceipt(photo.uri, userId);
+            await recordSnap(photo.uri, { amount: scan.amount, category: scan.category, merchant: scan.merchant, notes: scan.items, aiScannedAt: new Date().toISOString() });
+            navigation.goBack();
+            return;
+          } catch {
+            // Keep the capture even when AI is unavailable.
+          }
+        }
         await recordSnap(photo.uri);
         navigation.goBack();
       }
     } finally {
+      setSavingLabel("");
       setSaving(false);
     }
   };
@@ -63,6 +81,7 @@ export function CameraScreen() {
         </TouchableOpacity>
         <View style={styles.placeholder} />
       </View>
+      {saving && savingLabel ? <Text style={styles.savingText}>{savingLabel}</Text> : null}
     </View>
   );
 }
@@ -98,6 +117,16 @@ const styles = StyleSheet.create({
     width: 48
   },
   placeholder: { height: 48, width: 48 },
+  savingText: {
+    bottom: 118,
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+    left: 24,
+    position: "absolute",
+    right: 24,
+    textAlign: "center"
+  },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   permission: {
     alignItems: "center",

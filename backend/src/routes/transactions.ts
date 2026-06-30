@@ -48,6 +48,7 @@ const transactionSchema = z.object({
   category: z.nativeEnum(ExpenseCategory).optional(),
   merchant: z.string().optional(),
   notes: z.string().optional(),
+  aiScannedAt: z.coerce.date().nullable().optional(),
   scope: z.nativeEnum(TransactionScope).optional(),
   familyId: z.string().nullable().optional(),
   occurredAt: z.coerce.date().optional()

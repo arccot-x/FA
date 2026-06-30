@@ -209,6 +209,7 @@ model Transaction {
   category    ExpenseCategory?
   merchant    String?
   notes       String?
+  aiScannedAt DateTime?
   scope       TransactionScope   @default(PERSONAL)
   familyId    String?
   occurredAt  DateTime           @default(now())
