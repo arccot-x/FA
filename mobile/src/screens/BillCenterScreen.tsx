@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Modal, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Modal, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
 import { Screen } from "../components/Screen";
@@ -18,10 +18,14 @@ export function BillCenterScreen() {
   const theme = useTheme();
   const { t } = useI18n();
   const money = useMoney();
-  const { bills, load, markBill, editBillAmount, addBill, deleteBill } = useFinanceStore();
+  const { bills, load, loading, markBill, editBill, addBill, deleteBill } = useFinanceStore();
   const [editing, setEditing] = useState<BillOccurrence | null>(null);
   const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  const [dueDay, setDueDay] = useState("1");
+  const [category, setCategory] = useState<ExpenseCategory>("UTILITIES");
+  const [icon, setIcon] = useState("receipt");
   const [applyForever, setApplyForever] = useState(false);
 
   useFocusEffect(
@@ -32,16 +36,28 @@ export function BillCenterScreen() {
 
   const openEditor = (bill: BillOccurrence) => {
     setEditing(bill);
+    setName(bill.billTemplate.name);
     setAmount(String(toNumber(bill.amount)));
+    setDueDay(String(bill.billTemplate.dueDay ?? new Date(bill.dueDate).getUTCDate()));
+    setCategory(bill.billTemplate.category);
+    setIcon(bill.billTemplate.icon);
     setApplyForever(false);
   };
 
-  const saveAmount = async () => {
+  const saveBill = async () => {
     if (!editing) return;
     const nextAmount = Number(amount);
-    if (!Number.isFinite(nextAmount) || nextAmount < 0) return;
-    await editBillAmount(editing, nextAmount, applyForever);
+    const nextDueDay = Math.min(31, Math.max(1, Math.round(Number(dueDay) || 1)));
+    if (!name.trim() || !Number.isFinite(nextAmount) || nextAmount < 0) return;
+    await editBill(editing, { name: name.trim(), amount: nextAmount, dueDay: nextDueDay, category, icon, forever: applyForever });
     setEditing(null);
+  };
+
+  const setBillStatus = async (status: "UNPAID" | "PAID" | "SKIPPED") => {
+    if (!editing) return;
+    const bill = editing;
+    setEditing(null);
+    await markBill(bill, status);
   };
 
   const confirmDelete = () => {
@@ -74,6 +90,7 @@ export function BillCenterScreen() {
         data={data}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
           <Animated.View entering={FadeInDown.duration(400)}>
             <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.xl, ...theme.shadow("sm") }]}>
@@ -105,30 +122,56 @@ export function BillCenterScreen() {
       <Modal transparent animationType="fade" visible={editing !== null} onRequestClose={() => setEditing(null)} statusBarTranslucent>
         <View style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}>
           <Animated.View entering={FadeInDown.duration(220)} style={[styles.editor, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
-            <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
-            <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
-            <Field keyboardType="decimal-pad" autoFocus value={amount} onChangeText={setAmount} containerStyle={styles.editorField} />
-            <PressableScale
-              onPress={() => setApplyForever((value) => !value)}
-              style={[styles.foreverRow, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}
-            >
-              <MaterialCommunityIcons
-                color={applyForever ? theme.colors.primary : theme.colors.muted}
-                name={applyForever ? "checkbox-marked" : "checkbox-blank-outline"}
-                size={24}
-              />
-              <View style={styles.foreverText}>
-                <Text style={[styles.foreverTitle, { color: theme.colors.text }]}>{t("bills.applyForever")}</Text>
-                <Text style={[styles.foreverHint, { color: theme.colors.subtleText }]}>
-                  {applyForever ? t("bills.applyForeverHint") : t("bills.thisMonthHint")}
-                </Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
+              <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
+              <View style={styles.editorForm}>
+                <Field label={t("bills.billName")} autoFocus value={name} onChangeText={setName} />
+                <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+                <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} />
+                <View>
+                  <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
+                  <View style={styles.grid}>
+                    {expenseCategoryOptions.map((item) => (
+                      <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
+                    ))}
+                  </View>
+                </View>
+                <View>
+                  <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("bills.icon")}</Text>
+                  <View style={styles.grid}>
+                    {billIconOptions.map((item) => (
+                      <Chip key={item} icon={item} selected={item === icon} onPress={() => setIcon(item)} basis="13%" />
+                    ))}
+                  </View>
+                </View>
               </View>
-            </PressableScale>
-            <View style={styles.editorActions}>
-              <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
-              <Button label={t("common.save")} onPress={saveAmount} style={styles.editorButton} />
-            </View>
-            <Button label={t("bills.deleteBill")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} style={styles.editorDelete} />
+              <PressableScale
+                onPress={() => setApplyForever((value) => !value)}
+                style={[styles.foreverRow, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}
+              >
+                <MaterialCommunityIcons
+                  color={applyForever ? theme.colors.primary : theme.colors.muted}
+                  name={applyForever ? "checkbox-marked" : "checkbox-blank-outline"}
+                  size={24}
+                />
+                <View style={styles.foreverText}>
+                  <Text style={[styles.foreverTitle, { color: theme.colors.text }]}>{t("bills.applyForever")}</Text>
+                  <Text style={[styles.foreverHint, { color: theme.colors.subtleText }]}>
+                    {applyForever ? t("bills.applyForeverHint") : t("bills.thisMonthHint")}
+                  </Text>
+                </View>
+              </PressableScale>
+              <View style={styles.editorActions}>
+                <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
+                <Button label={t("common.save")} onPress={saveBill} style={styles.editorButton} />
+              </View>
+              <View style={styles.editorStatusActions}>
+                <Button label={t("bills.skip")} icon="pause-circle-outline" variant="secondary" onPress={() => void setBillStatus("SKIPPED")} />
+                <Button label={t("bills.reset")} icon="restore" variant="secondary" onPress={() => void setBillStatus("UNPAID")} />
+              </View>
+              <Button label={t("bills.deleteBill")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} style={styles.editorDelete} />
+            </ScrollView>
           </Animated.View>
         </View>
       </Modal>
@@ -276,6 +319,7 @@ const styles = StyleSheet.create({
     padding: 24
   },
   editor: {
+    maxHeight: "90%",
     padding: 24,
     width: "100%"
   },
@@ -288,7 +332,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 4
   },
-  editorField: {
+  editorForm: {
+    gap: 14,
     marginTop: 16
   },
   foreverRow: {
@@ -318,6 +363,10 @@ const styles = StyleSheet.create({
   },
   editorButton: {
     flex: 1
+  },
+  editorStatusActions: {
+    gap: 10,
+    marginTop: 10
   },
   editorDelete: {
     marginTop: 10

@@ -26,3 +26,7 @@ services:
         value: finance-vault
       - key: GROQ_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Frictionless Finance <onboarding@resend.dev>

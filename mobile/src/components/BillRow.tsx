@@ -20,6 +20,7 @@ export function BillRow({ bill, onToggle, onEdit }: BillRowProps) {
   const { t, locale, isRTL } = useI18n();
   const money = useMoney();
   const paid = bill.status === "PAID";
+  const skipped = bill.status === "SKIPPED";
   const dueLabel = formatDate(bill.dueDate, locale);
 
   const handleToggle = () => {
@@ -48,7 +49,7 @@ export function BillRow({ bill, onToggle, onEdit }: BillRowProps) {
               borderColor: theme.colors.border,
               borderRadius: theme.radii.lg,
               flexDirection: isRTL ? "row-reverse" : "row",
-              opacity: paid ? 0.7 : 1,
+              opacity: paid || skipped ? 0.7 : 1,
               ...theme.shadow("sm")
             }
           ]}
@@ -71,7 +72,7 @@ export function BillRow({ bill, onToggle, onEdit }: BillRowProps) {
             </Text>
             <Text style={[styles.meta, { color: theme.colors.subtleText, textAlign: isRTL ? "right" : "left" }]}>
               {bill.billTemplate.scope === "HOUSE" ? `${t("scope.house")} · ` : ""}
-              {paid ? t("bills.settledLabel") : t("bills.due", { date: dueLabel })}
+              {paid ? t("bills.settledLabel") : skipped ? t("bills.skippedLabel") : t("bills.due", { date: dueLabel })}
             </Text>
           </View>
 

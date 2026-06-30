@@ -34,6 +34,8 @@ type FinanceState = {
   restoreSession: () => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
+  requestPasswordReset: (input: { email: string }) => Promise<void>;
+  resetPassword: (input: { email: string; code: string; newPassword: string }) => Promise<void>;
   logout: () => Promise<void>;
   load: () => Promise<void>;
   addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope, type?: import("../types").TransactionType) => Promise<void>;
@@ -42,8 +44,12 @@ type FinanceState = {
   changePassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
   addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean; scope?: TransactionScope }) => Promise<void>;
-  markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
+  markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID" | "SKIPPED") => Promise<void>;
   editBillAmount: (bill: BillOccurrence, amount: number, forever?: boolean) => Promise<void>;
+  editBill: (
+    bill: BillOccurrence,
+    input: { name: string; amount: number; dueDay: number; category: ExpenseCategory; icon: string; forever?: boolean }
+  ) => Promise<void>;
   completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string; scope?: TransactionScope }) => Promise<void>;
   deleteTransaction: (transaction: Transaction) => Promise<void>;
   deleteBill: (bill: BillOccurrence) => Promise<void>;
@@ -369,9 +375,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     };
     const nextBill = { ...bill, status, paidAt: status === "PAID" ? new Date().toISOString() : null };
     const nextBills =
-      status === "PAID"
-        ? { unpaid: withoutBill.unpaid, settled: [nextBill, ...withoutBill.settled] }
-        : { unpaid: [nextBill, ...withoutBill.unpaid], settled: withoutBill.settled };
+      status === "UNPAID"
+        ? { unpaid: [nextBill, ...withoutBill.unpaid], settled: withoutBill.settled }
+        : { unpaid: withoutBill.unpaid, settled: [nextBill, ...withoutBill.settled] };
 
     set({ bills: nextBills });
     await api.updateBill(user.id, bill.id, { status });
@@ -387,6 +393,62 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     if (forever) {
       await api.updateBillTemplate(user.id, bill.billTemplate.id, { defaultAmount: amount });
     }
+    await get().load();
+  },
+
+  requestPasswordReset: async (input) => {
+    set({ loading: true, authError: undefined });
+    try {
+      await api.requestPasswordReset({ email: input.email.trim() });
+      set({ loading: false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send reset code.";
+      set({ authError: message, loading: false });
+      throw error;
+    }
+  },
+
+  resetPassword: async (input) => {
+    set({ loading: true, authError: undefined });
+    try {
+      const { user, token } = await api.resetPassword(input);
+      await storeSession(token);
+      set({ user, offline: false });
+      await get().load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not reset password.";
+      set({ authError: message, loading: false });
+      throw error;
+    }
+  },
+
+  editBill: async (bill, input) => {
+    const user = requireUser(get().user);
+    const replace = (item: BillOccurrence) =>
+      item.id === bill.id
+        ? {
+            ...item,
+            amount: input.amount,
+            billTemplate: {
+              ...item.billTemplate,
+              name: input.name,
+              category: input.category,
+              dueDay: input.dueDay,
+              icon: input.icon,
+              defaultAmount: input.forever ? input.amount : item.billTemplate.defaultAmount
+            }
+          }
+        : item;
+    set({ bills: { unpaid: get().bills.unpaid.map(replace), settled: get().bills.settled.map(replace) } });
+
+    await api.updateBill(user.id, bill.id, { amount: input.amount });
+    await api.updateBillTemplate(user.id, bill.billTemplate.id, {
+      name: input.name,
+      category: input.category,
+      dueDay: input.dueDay,
+      icon: input.icon,
+      ...(input.forever ? { defaultAmount: input.amount } : {})
+    });
     await get().load();
   },
 

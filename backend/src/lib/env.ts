@@ -15,7 +15,9 @@ const envSchema = z.object({
   // Groq (groq.com) — single app-wide key for AI receipt scanning. Optional: if unset,
   // the /ai/scan endpoint returns 501 and the app falls back to manual entry.
   GROQ_API_KEY: z.string().optional(),
-  GROQ_MODEL: z.string().default("meta-llama/llama-4-scout-17b-16e-instruct")
+  GROQ_MODEL: z.string().default("meta-llama/llama-4-scout-17b-16e-instruct"),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("Frictionless Finance <onboarding@resend.dev>")
 });
 
 export const env = envSchema.parse(process.env);

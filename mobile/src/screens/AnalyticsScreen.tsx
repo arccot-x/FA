@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-chart-kit";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
@@ -20,7 +20,7 @@ export function AnalyticsScreen() {
   const theme = useTheme();
   const { t, locale } = useI18n();
   const money = useMoney();
-  const { load, transactions, incomeCycle, bills } = useFinanceStore();
+  const { load, loading, transactions, incomeCycle, bills } = useFinanceStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -92,7 +92,11 @@ export function AnalyticsScreen() {
 
   return (
     <Screen title={t("analytics.title")} subtitle={t("analytics.subtitle")}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
+      >
         <Animated.View entering={FadeInDown.duration(380)} style={styles.metrics}>
           <MetricTile label={t("analytics.income")} value={money(analytics.income)} icon="cash-multiple" tone="primary" />
           <MetricTile label={t("analytics.expenses")} value={money(analytics.expenses)} icon="trending-down" tone="accent" />

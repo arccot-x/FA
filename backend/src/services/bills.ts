@@ -15,7 +15,9 @@ export async function ensureMonthlyBillOccurrences(userId: string, cycleMonth: D
           cycleMonth
         }
       },
-      update: {},
+      update: {
+        dueDate: dueDateFor(cycleMonth, template.dueDay)
+      },
       create: {
         userId,
         billTemplateId: template.id,

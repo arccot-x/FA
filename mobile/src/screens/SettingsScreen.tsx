@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
 import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
@@ -29,7 +29,7 @@ export function SettingsScreen() {
   const { currency, setCurrency } = useCurrency();
   const { enabled: remindersEnabled, daysBefore, setEnabled: setRemindersEnabled, setDaysBefore } = useReminders();
   const { enabled: lockEnabled, setEnabled: setLockEnabled } = useAppLock();
-  const { user, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle, transactions, deleteAccount } = useFinanceStore();
+  const { user, load, loading, logout, saveIncomeSettings, saveExpectedIncome, incomeCycle, transactions, deleteAccount } = useFinanceStore();
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -73,7 +73,11 @@ export function SettingsScreen() {
 
   return (
     <Screen title={t("settings.title")}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
+      >
         {/* Appearance */}
         <Section delay={0} title={t("settings.appearance")} theme={theme}>
           <Text style={[styles.rowLabel, { color: theme.colors.subtleText }]}>{t("settings.theme")}</Text>

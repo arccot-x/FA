@@ -57,6 +57,20 @@ export async function loginAccount(input: { email: string; password: string }) {
   });
 }
 
+export async function requestPasswordReset(input: { email: string }) {
+  return request<{ ok: boolean }>("/auth/request-password-reset", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function resetPassword(input: { email: string; code: string; newPassword: string }) {
+  return request<AuthPayload>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function getCurrentAccount() {
   return request<{ user: User }>("/auth/me");
 }
@@ -245,14 +259,28 @@ export async function addBillTemplate(input: {
   });
 }
 
-export async function updateBillTemplate(userId: string, templateId: string, input: { defaultAmount?: number }) {
+export async function updateBillTemplate(
+  userId: string,
+  templateId: string,
+  input: {
+    name?: string;
+    defaultAmount?: number;
+    dueDay?: number;
+    category?: ExpenseCategory;
+    icon?: string;
+    autopay?: boolean;
+    scope?: TransactionScope;
+    familyId?: string | null;
+    active?: boolean;
+  }
+) {
   return request(`/bills/${userId}/templates/${templateId}`, {
     method: "PATCH",
     body: JSON.stringify(input)
   });
 }
 
-export async function updateBill(userId: string, occurrenceId: string, input: { amount?: number; status?: "PAID" | "UNPAID" }) {
+export async function updateBill(userId: string, occurrenceId: string, input: { amount?: number; status?: "PAID" | "UNPAID" | "SKIPPED" }) {
   return request(`/bills/${userId}/occurrences/${occurrenceId}`, {
     method: "PATCH",
     body: JSON.stringify(input)

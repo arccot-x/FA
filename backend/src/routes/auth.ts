@@ -1,5 +1,8 @@
 import { Router } from "express";
+import crypto from "node:crypto";
+import { Resend } from "resend";
 import { z } from "zod";
+import { env } from "../lib/env";
 import { prisma } from "../lib/prisma";
 import { hashPassword, publicUser, signUserToken, verifyPassword, verifyUserToken } from "../services/auth";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -21,6 +24,37 @@ const credentialsSchema = z.object({
 const registerSchema = credentialsSchema.extend({
   name: z.string().min(1).max(80)
 });
+
+const requestResetSchema = z.object({
+  email: z.string().email().transform((value) => value.toLowerCase().trim())
+});
+
+const resetPasswordSchema = requestResetSchema.extend({
+  code: z.string().min(6).max(12).transform((value) => value.trim()),
+  newPassword: z.string().min(8)
+});
+
+function hashResetCode(code: string) {
+  return crypto.createHash("sha256").update(code).digest("hex");
+}
+
+function makeResetCode() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+async function sendResetCode(email: string, code: string) {
+  if (!env.RESEND_API_KEY) {
+    throw new Error("Password reset email is not configured.");
+  }
+
+  const resend = new Resend(env.RESEND_API_KEY);
+  await resend.emails.send({
+    from: env.EMAIL_FROM,
+    to: email,
+    subject: "Your Frictionless Finance reset code",
+    html: `<p>Your password reset code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>`
+  });
+}
 
 authRouter.post(
   "/register",
@@ -54,6 +88,62 @@ authRouter.post(
     if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new Error("Invalid email or password.");
     }
+
+    res.json({ user: publicUser(user), token: signUserToken(user) });
+  })
+);
+
+authRouter.post(
+  "/request-password-reset",
+  asyncHandler(async (req, res) => {
+    const input = requestResetSchema.parse(req.body);
+    const user = await prisma.user.findUnique({ where: { email: input.email } });
+
+    if (user?.passwordHash) {
+      const code = makeResetCode();
+      await prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashResetCode(code),
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+        }
+      });
+      await sendResetCode(user.email, code);
+    }
+
+    res.json({ ok: true });
+  })
+);
+
+authRouter.post(
+  "/reset-password",
+  asyncHandler(async (req, res) => {
+    const input = resetPasswordSchema.parse(req.body);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: input.email } });
+    const reset = await prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        tokenHash: hashResetCode(input.code),
+        usedAt: null,
+        expiresAt: { gt: new Date() }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    if (!reset) {
+      throw new Error("Reset code is invalid or expired.");
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: await hashPassword(input.newPassword) }
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: reset.id },
+        data: { usedAt: new Date() }
+      })
+    ]);
 
     res.json({ user: publicUser(user), token: signUserToken(user) });
   })

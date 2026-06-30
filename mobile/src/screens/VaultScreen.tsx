@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Linking, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Linking, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
 import { Button, Chip, Field, IconButton, ImageViewerModal, ModalSheet, PressableScale } from "../components/ui";
@@ -17,7 +17,7 @@ const folderOrder: VaultCategory[] = ["LEASE", "TAX", "INSURANCE", "BANKING", "W
 export function VaultScreen() {
   const theme = useTheme();
   const { t } = useI18n();
-  const { vaultDocuments, load, addVaultDocument } = useFinanceStore();
+  const { vaultDocuments, load, loading, addVaultDocument } = useFinanceStore();
   const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [title, setTitle] = useState("");
@@ -107,6 +107,7 @@ export function VaultScreen() {
         data={grouped}
         keyExtractor={(item) => item.category}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         renderItem={({ item, index }) => (
           <Animated.View
             entering={FadeInDown.delay(index * 40).duration(320)}

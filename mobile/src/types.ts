@@ -75,6 +75,8 @@ export type BillOccurrence = {
     id: string;
     name: string;
     category: ExpenseCategory;
+    defaultAmount?: string | number;
+    dueDay: number;
     icon: string;
     autopay: boolean;
     scope?: TransactionScope;
