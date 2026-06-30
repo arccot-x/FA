@@ -64,6 +64,10 @@ export const ar: Translations = {
     noActivity: "لا توجد حركات بعد. أضف أول مصروف.",
     quickAdd: "إضافة سريعة"
   },
+  sync: {
+    pending: "{count} taghyir yantazir al-muzamana",
+    syncing: "Jari muzamanat al-taghyirat al-mahfuza..."
+  },
   income: {
     title: "الدخل",
     monthlyIncome: "الدخل الشهري",
@@ -111,12 +115,15 @@ export const ar: Translations = {
     invited: "تم إرسال الدعوة.",
     copyId: "نسخ المعرّف",
     copied: "تم نسخ المعرّف",
-    planLimit: "{plan} allows up to {count} people.",
-    limitReached: "Your subscription limit has been reached.",
-    lockedTitle: "Family is locked",
-    lockedMessage: "The family owner needs an active family subscription.",
-    subscribeFirst: "Subscribe to create a family",
-    subscribeFirstHint: "Family plans unlock shared house money, house bills and member invites."
+    planLimit: "{plan} yasmah bi {count} ashkhas.",
+    memberUsage: "{used} min {count} amakn mustakhdama.",
+    limitReached: "Wasalt ila hadd al-ishtirak.",
+    lockedTitle: "Al-aaila muqfala",
+    lockedMessage: "Malik al-aaila yahtaj ila ishtirak aaili nashit.",
+    ownerMustSubscribe: "Malik al-aaila faqat yastatie fathaha.",
+    subscribeFirst: "Ishtarik li-insha aaila",
+    subscribeFirstHint: "Khutat al-aaila taftah amwal al-manzil al-mushtarika wa fawatir al-manzil wa daawat al-aada.",
+    familyPlanOptions: "Family 3 yashmaluka maa 3 ashkhas, wa Family 6 yashmaluka maa 6 ashkhas."
   },
   quickAdd: {
     title: "إضافة سريعة",
@@ -212,26 +219,29 @@ export const ar: Translations = {
     upload: "رفع إلى الخزنة",
     noDocuments: "لا مستندات",
     documentCount: "{count} ملف",
-    delete: "Delete document",
-    deleteTitle: "Delete document?",
-    deleteMessage: "This file will be permanently removed."
+    noReceipts: "La tujadu isalat mahfuza baad.",
+    allFiles: "Kul al-milafat",
+    receiptHistory: "Al-isalat ({count})",
+    delete: "Hadhf al-mustanad",
+    deleteTitle: "Hadhf al-mustanad?",
+    deleteMessage: "Sayutam hadhf hadha al-milaf nihaiyan."
   },
   subscription: {
-    title: "Subscription",
-    subtitle: "Choose a plan and unlock the right features",
-    testMode: "Test subscription",
-    activePlan: "{plan} active",
-    notSubscribed: "No active subscription",
-    lockedHint: "Family features are locked until the owner has an active family plan.",
-    memberLimit: "Up to {count} people",
-    switchPlan: "Switch plan",
-    hint: "Test mode lets you change plans instantly. No payment details required.",
-    save: "Save subscription",
-    update: "Update subscription",
-    subscribe: "Subscribe for {price}",
-    saved: "Subscription saved.",
-    familyIncluded: "Family sharing included",
-    personalOnly: "Personal account only"
+    title: "Al-ishtirak",
+    subtitle: "Ikhtar khutta wa iftah al-mizaat al-munasiba",
+    testMode: "Ishtirak tajribi",
+    activePlan: "{plan} nashit",
+    notSubscribed: "La yujad ishtirak nashit",
+    lockedHint: "Mizaat al-aaila muqfala hatta yamlik al-malik khutta aailiya nashita.",
+    memberLimit: "Hatta {count} ashkhas",
+    switchPlan: "Taghyir al-khutta",
+    hint: "Wad al-ikhtibar yasmah bitaghyir al-khutta fawran bidun tafasil dafa.",
+    save: "Hifz al-ishtirak",
+    update: "Tahdith al-ishtirak",
+    subscribe: "Ishtarik muqabil {price}",
+    saved: "Tam hifz al-ishtirak.",
+    familyIncluded: "Musharakat al-aaila mashmula",
+    personalOnly: "Hisab shakhsi faqat"
   },
   analytics: {
     title: "التحليلات",

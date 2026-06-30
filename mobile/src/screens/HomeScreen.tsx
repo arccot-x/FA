@@ -31,7 +31,7 @@ export function HomeScreen() {
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
   const [view, setView] = useState<"personal" | "house">("personal");
 
-  const { user, load, loading, offline, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
+  const { user, load, loading, offline, pendingSyncCount, syncing, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
 
   const inFamily = !!family?.subscription?.allowed;
@@ -159,6 +159,15 @@ export function HomeScreen() {
                 value={view}
                 onChange={(value) => setView(value as "personal" | "house")}
               />
+            ) : null}
+
+            {pendingSyncCount > 0 || syncing ? (
+              <View style={[styles.syncBanner, { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning, borderRadius: theme.radii.md }]}>
+                <MaterialCommunityIcons color={theme.colors.warning} name={syncing ? "sync" : "cloud-upload"} size={20} />
+                <Text style={[styles.syncText, { color: theme.colors.text }]}>
+                  {syncing ? t("sync.syncing") : t("sync.pending", { count: pendingSyncCount })}
+                </Text>
+              </View>
             ) : null}
 
             <Animated.View entering={FadeInDown.duration(420)}>
@@ -405,6 +414,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 8
+  },
+  syncBanner: {
+    alignItems: "center",
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    padding: 12
+  },
+  syncText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "800"
   },
   sectionTitle: {
     fontSize: 19,

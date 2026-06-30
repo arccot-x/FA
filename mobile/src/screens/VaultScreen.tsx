@@ -23,6 +23,7 @@ export function VaultScreen() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<VaultCategory>("RECEIPT");
   const [preview, setPreview] = useState<{ uri: string; title: string } | null>(null);
+  const [filter, setFilter] = useState<"all" | "receipts">("all");
 
   const openDocument = (document: VaultDocument) => {
     if (document.mimeType.startsWith("image")) {
@@ -38,10 +39,11 @@ export function VaultScreen() {
     }, [load])
   );
 
-  const grouped = useMemo(
-    () => folderOrder.map((cat) => ({ category: cat, documents: vaultDocuments.filter((document) => document.category === cat) })),
-    [vaultDocuments]
-  );
+  const receiptCount = useMemo(() => vaultDocuments.filter((document) => document.category === "RECEIPT").length, [vaultDocuments]);
+  const grouped = useMemo(() => {
+    const categories = filter === "receipts" ? (["RECEIPT"] as VaultCategory[]) : folderOrder;
+    return categories.map((cat) => ({ category: cat, documents: vaultDocuments.filter((document) => document.category === cat) }));
+  }, [filter, vaultDocuments]);
 
   const pickDocument = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/*"], copyToCacheDirectory: true });
@@ -118,14 +120,31 @@ export function VaultScreen() {
         keyExtractor={(item) => item.category}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
+        ListHeaderComponent={
+          <View style={[styles.filterBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
+            <PressableScale
+              onPress={() => setFilter("all")}
+              style={[styles.filterButton, { backgroundColor: filter === "all" ? theme.colors.primarySoft : "transparent", borderRadius: theme.radii.pill }]}
+            >
+              <MaterialCommunityIcons color={filter === "all" ? theme.colors.primary : theme.colors.subtleText} name="folder-multiple" size={18} />
+              <Text style={[styles.filterText, { color: filter === "all" ? theme.colors.primary : theme.colors.subtleText }]}>{t("vault.allFiles")}</Text>
+            </PressableScale>
+            <PressableScale
+              onPress={() => setFilter("receipts")}
+              style={[styles.filterButton, { backgroundColor: filter === "receipts" ? theme.colors.primarySoft : "transparent", borderRadius: theme.radii.pill }]}
+            >
+              <MaterialCommunityIcons color={filter === "receipts" ? theme.colors.primary : theme.colors.subtleText} name="receipt" size={18} />
+              <Text style={[styles.filterText, { color: filter === "receipts" ? theme.colors.primary : theme.colors.subtleText }]}>
+                {t("vault.receiptHistory", { count: receiptCount })}
+              </Text>
+            </PressableScale>
+          </View>
+        }
         renderItem={({ item, index }) => (
-          <Animated.View
-            entering={FadeInDown.delay(index * 40).duration(320)}
-            style={[styles.folder, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
-          >
+          <Animated.View entering={FadeInDown.delay(index * 40).duration(320)} style={[styles.folder, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
             <View style={styles.folderHeader}>
               <View style={styles.folderTitleRow}>
-                <MaterialCommunityIcons color={theme.colors.primary} name="folder" size={22} />
+                <MaterialCommunityIcons color={theme.colors.primary} name={item.category === "RECEIPT" ? "receipt" : "folder"} size={22} />
                 <Text style={[styles.folderTitle, { color: theme.colors.text }]}>{t(`vaultCategory.${item.category}` as never)}</Text>
               </View>
               <View style={[styles.countPill, { backgroundColor: theme.colors.surfaceAlt }]}>
@@ -135,7 +154,7 @@ export function VaultScreen() {
             {item.documents.length > 0 ? (
               item.documents.map(renderDocument)
             ) : (
-              <Text style={[styles.emptyFolder, { color: theme.colors.muted }]}>{t("vault.noDocuments")}</Text>
+              <Text style={[styles.emptyFolder, { color: theme.colors.muted }]}>{filter === "receipts" ? t("vault.noReceipts") : t("vault.noDocuments")}</Text>
             )}
           </Animated.View>
         )}
@@ -176,12 +195,31 @@ export function VaultScreen() {
 
 const styles = StyleSheet.create({
   content: {
+    gap: 14,
     padding: 16,
     paddingBottom: 96
   },
+  filterBar: {
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 4,
+    padding: 4
+  },
+  filterButton: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: 10
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "900"
+  },
   folder: {
     borderWidth: 1,
-    marginBottom: 14,
     padding: 16
   },
   folderHeader: {

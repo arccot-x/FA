@@ -11,7 +11,8 @@
     "backend:build": "npm --workspace backend run build",
     "mobile:start": "npm --workspace mobile run start",
     "mobile:android": "npm --workspace mobile run android",
-    "typecheck": "npm --workspace backend run typecheck && npm --workspace mobile run typecheck"
+    "typecheck": "npm --workspace backend run typecheck && npm --workspace mobile run typecheck",
+    "test": "npm --workspace backend run test && npm --workspace mobile run test"
   },
   "overrides": {
     "@types/multer": {

@@ -62,6 +62,10 @@ export const en = {
     noActivity: "No activity yet. Add your first expense.",
     quickAdd: "Quick add"
   },
+  sync: {
+    pending: "{count} change(s) waiting to sync",
+    syncing: "Syncing saved changes..."
+  },
   income: {
     title: "Income",
     monthlyIncome: "Monthly income",
@@ -110,11 +114,14 @@ export const en = {
     copyId: "Copy ID",
     copied: "ID copied",
     planLimit: "{plan} allows up to {count} people.",
+    memberUsage: "{used} of {count} spots used.",
     limitReached: "Your subscription limit has been reached.",
     lockedTitle: "Family is locked",
     lockedMessage: "The family owner needs an active family subscription.",
+    ownerMustSubscribe: "Only the family owner can unlock this family.",
     subscribeFirst: "Subscribe to create a family",
-    subscribeFirstHint: "Family plans unlock shared house money, house bills and member invites."
+    subscribeFirstHint: "Family plans unlock shared house money, house bills and member invites.",
+    familyPlanOptions: "Family 3 includes you plus 3 people. Family 6 includes you plus 6 people."
   },
   quickAdd: {
     title: "Quick add",
@@ -209,6 +216,9 @@ export const en = {
     folder: "Folder",
     upload: "Upload to vault",
     noDocuments: "No documents",
+    noReceipts: "No receipts saved yet.",
+    allFiles: "All files",
+    receiptHistory: "Receipts ({count})",
     documentCount: "{count} files",
     delete: "Delete document",
     deleteTitle: "Delete document?",

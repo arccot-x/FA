@@ -64,6 +64,10 @@ export const tr: Translations = {
     noActivity: "Henüz hareket yok. İlk harcamanı ekle.",
     quickAdd: "Hızlı ekle"
   },
+  sync: {
+    pending: "{count} degisiklik esitleme bekliyor",
+    syncing: "Kayitli degisiklikler esitleniyor..."
+  },
   income: {
     title: "Gelir",
     monthlyIncome: "Aylık gelir",
@@ -111,12 +115,15 @@ export const tr: Translations = {
     invited: "Davet gönderildi.",
     copyId: "Kimliği kopyala",
     copied: "Kimlik kopyalandı",
-    planLimit: "{plan} allows up to {count} people.",
-    limitReached: "Your subscription limit has been reached.",
-    lockedTitle: "Family is locked",
-    lockedMessage: "The family owner needs an active family subscription.",
-    subscribeFirst: "Subscribe to create a family",
-    subscribeFirstHint: "Family plans unlock shared house money, house bills and member invites."
+    planLimit: "{plan} en fazla {count} kisiye izin verir.",
+    memberUsage: "{used} / {count} yer kullaniliyor.",
+    limitReached: "Abonelik sinirina ulasildi.",
+    lockedTitle: "Aile kilitli",
+    lockedMessage: "Aile sahibinin aktif bir aile aboneligi olmali.",
+    ownerMustSubscribe: "Bu aileyi yalnizca aile sahibi acabilir.",
+    subscribeFirst: "Aile olusturmak icin abone ol",
+    subscribeFirstHint: "Aile planlari ortak ev parasini, ev faturalarini ve uye davetlerini acar.",
+    familyPlanOptions: "Family 3 seni ve 3 kisiyi, Family 6 seni ve 6 kisiyi kapsar."
   },
   quickAdd: {
     title: "Hızlı ekle",
@@ -211,27 +218,30 @@ export const tr: Translations = {
     folder: "Klasör",
     upload: "Kasaya yükle",
     noDocuments: "Belge yok",
+    noReceipts: "Henuz kayitli fis yok.",
+    allFiles: "Tum dosyalar",
+    receiptHistory: "Fisler ({count})",
     documentCount: "{count} dosya",
-    delete: "Delete document",
-    deleteTitle: "Delete document?",
-    deleteMessage: "This file will be permanently removed."
+    delete: "Belgeyi sil",
+    deleteTitle: "Belge silinsin mi?",
+    deleteMessage: "Bu dosya kalici olarak kaldirilacak."
   },
   subscription: {
-    title: "Subscription",
-    subtitle: "Choose a plan and unlock the right features",
-    testMode: "Test subscription",
-    activePlan: "{plan} active",
-    notSubscribed: "No active subscription",
-    lockedHint: "Family features are locked until the owner has an active family plan.",
-    memberLimit: "Up to {count} people",
-    switchPlan: "Switch plan",
-    hint: "Test mode lets you change plans instantly. No payment details required.",
-    save: "Save subscription",
-    update: "Update subscription",
-    subscribe: "Subscribe for {price}",
-    saved: "Subscription saved.",
-    familyIncluded: "Family sharing included",
-    personalOnly: "Personal account only"
+    title: "Abonelik",
+    subtitle: "Bir plan sec ve uygun ozellikleri ac",
+    testMode: "Test aboneligi",
+    activePlan: "{plan} aktif",
+    notSubscribed: "Aktif abonelik yok",
+    lockedHint: "Aile ozellikleri, aile sahibinin aktif aile plani olana kadar kilitlidir.",
+    memberLimit: "En fazla {count} kisi",
+    switchPlan: "Plani degistir",
+    hint: "Test modunda odeme bilgisi olmadan plani aninda degistirebilirsin.",
+    save: "Aboneligi kaydet",
+    update: "Aboneligi guncelle",
+    subscribe: "{price} ile abone ol",
+    saved: "Abonelik kaydedildi.",
+    familyIncluded: "Aile paylasimi dahil",
+    personalOnly: "Yalnizca kisisel hesap"
   },
   analytics: {
     title: "Analiz",

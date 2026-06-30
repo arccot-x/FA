@@ -4,6 +4,7 @@ import * as api from "../services/api";
 import type { BillOccurrence, BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, IncomeCycle, Transaction, TransactionScope, User, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 import { clearCache, loadCache, saveCache } from "../utils/cache";
+import { clearOfflineQueue, enqueueOfflineItem, loadOfflineQueue, makeQueueItem, saveOfflineQueue, type OfflineQueueItem } from "../utils/offlineQueue";
 
 type CachedBootstrap = Pick<BootstrapPayload, "incomeCycle" | "bills" | "transactions" | "vaultDocuments">;
 
@@ -18,6 +19,8 @@ type FinanceState = {
   loading: boolean;
   authReady: boolean;
   offline: boolean;
+  pendingSyncCount: number;
+  syncing: boolean;
   authError?: string;
   selectedMonth: string;
   setMonth: (month: string) => Promise<void>;
@@ -38,6 +41,7 @@ type FinanceState = {
   resetPassword: (input: { email: string; code: string; newPassword: string }) => Promise<void>;
   logout: () => Promise<void>;
   load: () => Promise<void>;
+  processPendingSync: () => Promise<void>;
   addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope, type?: import("../types").TransactionType) => Promise<void>;
   saveIncomeSettings: (input: { defaultMonthlyIncome: number; paydayDay: number; variableIncomeEnabled: boolean }) => Promise<void>;
   saveExpectedIncome: (expected: number, actual?: number, houseAllocation?: number) => Promise<void>;
@@ -100,6 +104,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   loading: false,
   authReady: false,
   offline: false,
+  pendingSyncCount: 0,
+  syncing: false,
   selectedMonth: currentMonthKey(),
   family: undefined,
   familyInvites: [],
@@ -241,6 +247,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     await clearSession();
     void clearCache("user");
     void clearCache(`bootstrap-${get().selectedMonth}`);
+    void clearOfflineQueue();
     set({
       user: undefined,
       incomeCycle: undefined,
@@ -249,6 +256,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       vaultDocuments: [],
       loading: false,
       offline: false,
+      pendingSyncCount: 0,
+      syncing: false,
       authError: undefined,
       selectedMonth: currentMonthKey(),
       family: null,
@@ -267,6 +276,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const month = get().selectedMonth;
     set({ loading: true });
     try {
+      await get().processPendingSync();
       const data = await api.bootstrap(user.id, month);
       set({
         user: data.user,
@@ -275,7 +285,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         transactions: data.transactions,
         vaultDocuments: data.vaultDocuments,
         loading: false,
-        offline: false
+        offline: false,
+        pendingSyncCount: (await loadOfflineQueue()).length
       });
       void saveCache("user", data.user);
       void saveCache(`bootstrap-${month}`, { incomeCycle: data.incomeCycle, bills: data.bills, transactions: data.transactions, vaultDocuments: data.vaultDocuments });
@@ -284,18 +295,66 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       // Offline: fall back to the last cached data for this month if we have it.
       const cached = await loadCache<CachedBootstrap>(`bootstrap-${month}`);
       if (cached) {
+        const pending = await loadOfflineQueue();
         set({
           incomeCycle: cached.incomeCycle,
           bills: cached.bills,
           transactions: cached.transactions,
           vaultDocuments: cached.vaultDocuments,
           loading: false,
-          offline: true
+          offline: true,
+          pendingSyncCount: pending.length
         });
       } else {
-        set({ loading: false, offline: true });
+        const pending = await loadOfflineQueue();
+        set({ loading: false, offline: true, pendingSyncCount: pending.length });
       }
     }
+  },
+
+  processPendingSync: async () => {
+    const user = get().user;
+    if (!user || get().syncing) return;
+
+    const queue = await loadOfflineQueue();
+    if (queue.length === 0) {
+      set({ pendingSyncCount: 0 });
+      return;
+    }
+
+    set({ syncing: true, pendingSyncCount: queue.length });
+    const remaining: OfflineQueueItem[] = [];
+
+    for (const item of queue) {
+      try {
+        if (item.kind === "addTransaction") {
+          await api.addTransaction({ userId: user.id, ...item.payload });
+        } else if (item.kind === "updateTransaction") {
+          await api.updateTransaction({ userId: user.id, ...item.payload });
+        } else if (item.kind === "deleteTransaction") {
+          await api.deleteTransaction({ userId: user.id, transactionId: item.payload.transactionId });
+        } else if (item.kind === "uploadSnap") {
+          await api.uploadSnapExpense({ userId: user.id, uri: item.payload.uri });
+        } else if (item.kind === "addBill") {
+          await api.addBillTemplate({ userId: user.id, ...item.payload });
+        } else if (item.kind === "deleteBill") {
+          await api.deleteBillTemplate({ userId: user.id, templateId: item.payload.templateId });
+        } else if (item.kind === "saveIncomeSettings") {
+          await api.updateIncomeSettings({ userId: user.id, ...item.payload });
+        } else if (item.kind === "saveIncomeCycle") {
+          await api.saveIncomeCycle({ userId: user.id, ...item.payload });
+        } else if (item.kind === "addVaultDocument") {
+          await api.uploadVaultDocument({ userId: user.id, ...item.payload });
+        } else if (item.kind === "deleteVaultDocument") {
+          await api.deleteVaultDocument({ userId: user.id, documentId: item.payload.documentId });
+        }
+      } catch {
+        remaining.push(item);
+      }
+    }
+
+    await saveOfflineQueue(remaining);
+    set({ syncing: false, pendingSyncCount: remaining.length, offline: remaining.length > 0 });
   },
 
   addManualExpense: async (amount, category, scope = "PERSONAL", type = "EXPENSE") => {
@@ -321,6 +380,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : resolvedScope, familyId });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("addTransaction", { amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : resolvedScope, familyId }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -344,6 +405,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.updateIncomeSettings({ userId: user.id, ...input });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("saveIncomeSettings", input));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -361,6 +424,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual, houseAllocation });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("saveIncomeCycle", { month: get().selectedMonth, expected, actual, houseAllocation }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -413,6 +478,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.addBillTemplate({ userId: user.id, ...input, scope: resolvedScope, familyId });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("addBill", { ...input, scope: resolvedScope, familyId }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -522,6 +589,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
     set({ transactions: get().transactions.map(replace) });
     if (isLocalId(transaction.id)) {
+      const receiptUri = transaction.attachments.find((attachment) => attachment.mimeType?.startsWith("image"))?.url;
+      if (receiptUri) {
+        const existingQueue = await loadOfflineQueue();
+        await saveOfflineQueue(existingQueue.filter((item) => item.kind !== "uploadSnap" || item.payload.uri !== receiptUri));
+      }
+      const queue = await enqueueOfflineItem(makeQueueItem("addTransaction", { amount: input.amount, category: input.category, type: "EXPENSE", scope, familyId }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
       return;
     }
@@ -539,6 +613,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("updateTransaction", { transactionId: transaction.id, amount: input.amount, category: input.category, merchant: input.merchant, notes: input.notes, scope, familyId }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -552,9 +628,18 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         await api.deleteTransaction({ userId: user.id, transactionId: transaction.id });
         await get().load();
       } catch {
+        const queue = await enqueueOfflineItem(makeQueueItem("deleteTransaction", { transactionId: transaction.id }));
+        set({ pendingSyncCount: queue.length });
         markOfflineMutation(set);
       }
       return;
+    }
+    const receiptUri = transaction.attachments.find((attachment) => attachment.mimeType?.startsWith("image"))?.url;
+    if (receiptUri) {
+      const queue = await loadOfflineQueue();
+      const next = queue.filter((item) => item.kind !== "uploadSnap" || item.payload.uri !== receiptUri);
+      await saveOfflineQueue(next);
+      set({ pendingSyncCount: next.length });
     }
     markOfflineMutation(set);
   },
@@ -571,8 +656,14 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       markOfflineMutation(set);
       return;
     }
-    await api.deleteBillTemplate({ userId: user.id, templateId: bill.billTemplate.id });
-    await get().load();
+    try {
+      await api.deleteBillTemplate({ userId: user.id, templateId: bill.billTemplate.id });
+      await get().load();
+    } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("deleteBill", { templateId: bill.billTemplate.id }));
+      set({ pendingSyncCount: queue.length });
+      markOfflineMutation(set);
+    }
   },
 
   recordSnap: async (uri) => {
@@ -593,6 +684,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.uploadSnapExpense({ userId: user.id, uri });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("uploadSnap", { uri }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -614,6 +707,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.uploadVaultDocument({ userId: user.id, ...input });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("addVaultDocument", input));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },
@@ -629,6 +724,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.deleteVaultDocument({ userId: user.id, documentId: document.id });
       await get().load();
     } catch {
+      const queue = await enqueueOfflineItem(makeQueueItem("deleteVaultDocument", { documentId: document.id }));
+      set({ pendingSyncCount: queue.length });
       markOfflineMutation(set);
     }
   },

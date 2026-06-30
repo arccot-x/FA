@@ -6,7 +6,7 @@ import { Button, Field } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
-import { useSubscription } from "../utils/SubscriptionProvider";
+import { SUBSCRIPTION_PLANS, useSubscription } from "../utils/SubscriptionProvider";
 
 export function FamilySection() {
   const navigation = useNavigation();
@@ -37,6 +37,10 @@ export function FamilySection() {
   const familyLocked = family ? !familyAccess?.allowed : false;
   const canInvite = !familyLocked && memberCount < memberLimit;
   const canCreateFamily = subscription.active && subscription.family;
+  const currentPlan = SUBSCRIPTION_PLANS.find((plan) => plan.id === subscription.plan);
+  const limitText = family
+    ? t("family.planLimit", { plan: currentPlan?.name ?? t("subscription.title"), count: memberLimit })
+    : t("family.familyPlanOptions");
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
@@ -78,14 +82,19 @@ export function FamilySection() {
 
           <Text style={[styles.label, { color: theme.colors.subtleText, marginTop: 12 }]}>{t("family.members")}</Text>
           <Text style={[styles.hint, { color: theme.colors.muted }]}>
-            {t("family.planLimit", { plan: t("subscription.title"), count: memberLimit })}
+            {limitText}
           </Text>
+          <View style={[styles.memberMeter, { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radii.pill }]}>
+            <View style={[styles.memberMeterFill, { width: `${Math.min(100, (memberCount / Math.max(1, memberLimit)) * 100)}%`, backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill }]} />
+          </View>
+          <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{t("family.memberUsage", { used: memberCount, count: memberLimit })}</Text>
           {familyLocked ? (
             <View style={[styles.lockBox, { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning, borderRadius: theme.radii.md }]}>
               <MaterialCommunityIcons color={theme.colors.warning} name="lock-alert" size={20} />
               <View style={styles.lockText}>
                 <Text style={[styles.lockTitle, { color: theme.colors.text }]}>{t("family.lockedTitle")}</Text>
                 <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{familyAccess?.reason ?? t("family.lockedMessage")}</Text>
+                {!isOwner ? <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{t("family.ownerMustSubscribe")}</Text> : null}
               </View>
             </View>
           ) : null}
@@ -150,6 +159,7 @@ export function FamilySection() {
               <View style={styles.lockText}>
                 <Text style={[styles.lockTitle, { color: theme.colors.text }]}>{t("family.subscribeFirst")}</Text>
                 <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{t("family.subscribeFirstHint")}</Text>
+                <Text style={[styles.hint, { color: theme.colors.subtleText }]}>{t("family.familyPlanOptions")}</Text>
               </View>
             </View>
           ) : null}
@@ -197,5 +207,7 @@ const styles = StyleSheet.create({
   lockBox: { alignItems: "flex-start", borderWidth: 1, flexDirection: "row", gap: 10, marginTop: 10, padding: 12 },
   lockText: { flex: 1, minWidth: 0 },
   lockTitle: { fontSize: 14, fontWeight: "900" },
+  memberMeter: { height: 8, marginTop: 10, overflow: "hidden" },
+  memberMeterFill: { height: 8 },
   spaced: { marginTop: 12 }
 });
