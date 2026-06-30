@@ -38,7 +38,7 @@ type FinanceState = {
   saveExpectedIncome: (expected: number, actual?: number, houseAllocation?: number) => Promise<void>;
   changePassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
-  addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean }) => Promise<void>;
+  addBill: (input: { name: string; defaultAmount: number; dueDay: number; category: ExpenseCategory; icon: string; autopay?: boolean; scope?: TransactionScope }) => Promise<void>;
   markBill: (bill: BillOccurrence, status: "PAID" | "UNPAID") => Promise<void>;
   editBillAmount: (bill: BillOccurrence, amount: number, forever?: boolean) => Promise<void>;
   completePendingExpense: (transaction: Transaction, input: { amount: number; category: ExpenseCategory; merchant?: string; notes?: string; scope?: TransactionScope }) => Promise<void>;
@@ -51,7 +51,7 @@ type FinanceState = {
 
 const tokenKey = "frictionless-finance-token";
 const emptyBills: BillsState = { unpaid: [], settled: [] };
-const emptyHouse: HouseData = { pool: 0, spent: 0, balance: 0, transactions: [] };
+const emptyHouse: HouseData = { pool: 0, spent: 0, billsDue: 0, balance: 0, transactions: [] };
 
 function requireUser(user?: User) {
   if (!user) {
@@ -322,7 +322,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   addBill: async (input) => {
     const user = requireUser(get().user);
-    await api.addBillTemplate({ userId: user.id, ...input });
+    const familyId = input.scope === "HOUSE" ? get().family?.id ?? null : null;
+    await api.addBillTemplate({ userId: user.id, ...input, familyId });
     await get().load();
   },
 

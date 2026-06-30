@@ -70,6 +70,7 @@ export function BillRow({ bill, onToggle, onEdit }: BillRowProps) {
               {bill.billTemplate.name}
             </Text>
             <Text style={[styles.meta, { color: theme.colors.subtleText, textAlign: isRTL ? "right" : "left" }]}>
+              {bill.billTemplate.scope === "HOUSE" ? `${t("scope.house")} · ` : ""}
               {paid ? t("bills.settledLabel") : t("bills.due", { date: dueLabel })}
             </Text>
           </View>

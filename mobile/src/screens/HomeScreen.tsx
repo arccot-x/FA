@@ -52,8 +52,10 @@ export function HomeScreen() {
     [transactions, selectedMonth]
   );
 
-  // Money still owed this month (shown as an upcoming figure, not deducted from safe-to-spend).
-  const billsUnpaid = useMemo(() => bills.unpaid.reduce((sum, item) => sum + toNumber(item.amount), 0), [bills.unpaid]);
+  // Personal bills only (house bills count against house money, not personal).
+  const personalUnpaid = useMemo(() => bills.unpaid.filter((b) => b.billTemplate.scope !== "HOUSE"), [bills.unpaid]);
+  const personalSettled = useMemo(() => bills.settled.filter((b) => b.billTemplate.scope !== "HOUSE"), [bills.settled]);
+  const billsUnpaid = useMemo(() => personalUnpaid.reduce((sum, item) => sum + toNumber(item.amount), 0), [personalUnpaid]);
 
   const houseAllocation = toNumber(incomeCycle?.houseAllocation);
 
@@ -64,9 +66,9 @@ export function HomeScreen() {
     const received = actual > 0 ? Math.max(0, actual - houseAllocation) : 0;
     const spent = monthTransactions.filter((item) => item.status === "CLEARED").reduce((sum, item) => sum + toNumber(item.amount), 0);
     // Only bills you've actually PAID reduce what's still usable; unpaid bills are upcoming.
-    const billsPaid = bills.settled.reduce((sum, item) => sum + toNumber(item.amount), 0);
+    const billsPaid = personalSettled.reduce((sum, item) => sum + toNumber(item.amount), 0);
     return summariseIncome({ expected, received, spent, billsDue: billsPaid, paydayDay: user?.paydayDay ?? 1 });
-  }, [incomeCycle, houseAllocation, bills.settled, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
+  }, [incomeCycle, houseAllocation, personalSettled, monthTransactions, user?.defaultMonthlyIncome, user?.paydayDay]);
 
   // The data shown depends on the selected money view.
   const listData = houseView ? house.transactions : monthTransactions;
@@ -200,6 +202,7 @@ export function HomeScreen() {
                 <>
                   <MetricTile label={t("home.income")} value={money(house.pool)} icon="home-group" tone="primary" />
                   <MetricTile label={t("home.spent")} value={money(house.spent)} icon="trending-down" tone="accent" />
+                  <MetricTile label={t("home.unpaidBills")} value={money(house.billsDue)} icon="calendar-clock" tone="danger" />
                 </>
               ) : (
                 <>

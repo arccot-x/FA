@@ -225,6 +225,8 @@ export async function addBillTemplate(input: {
   category: ExpenseCategory;
   icon: string;
   autopay?: boolean;
+  scope?: TransactionScope;
+  familyId?: string | null;
 }) {
   return request(`/bills/${input.userId}/templates`, {
     method: "POST",
@@ -234,7 +236,9 @@ export async function addBillTemplate(input: {
       dueDay: input.dueDay,
       category: input.category,
       icon: input.icon,
-      autopay: input.autopay ?? false
+      autopay: input.autopay ?? false,
+      scope: input.scope,
+      familyId: input.familyId
     })
   });
 }

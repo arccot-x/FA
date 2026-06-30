@@ -5,13 +5,13 @@ import { Alert, FlatList, Modal, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
 import { Screen } from "../components/Screen";
-import { Button, Chip, Field, IconButton, ModalSheet, PressableScale } from "../components/ui";
+import { Button, Chip, Field, IconButton, ModalSheet, PressableScale, SegmentedControl } from "../components/ui";
 import { billIconOptions, expenseCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
-import type { BillOccurrence, ExpenseCategory } from "../types";
+import type { BillOccurrence, ExpenseCategory, TransactionScope } from "../types";
 import { toNumber } from "../utils/money";
 
 export function BillCenterScreen() {
@@ -152,16 +152,19 @@ type AddBillInput = {
   category: ExpenseCategory;
   icon: string;
   autopay?: boolean;
+  scope?: TransactionScope;
 };
 
 function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClose: () => void; onSubmit: (input: AddBillInput) => Promise<void> }) {
   const theme = useTheme();
   const { t } = useI18n();
+  const inFamily = useFinanceStore((state) => !!state.family);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("1");
   const [category, setCategory] = useState<ExpenseCategory>("UTILITIES");
   const [icon, setIcon] = useState("receipt");
+  const [scope, setScope] = useState<TransactionScope>("PERSONAL");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -170,12 +173,13 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
     if (!name.trim() || !parsedAmount) return;
     setSaving(true);
     try {
-      await onSubmit({ name: name.trim(), defaultAmount: parsedAmount, dueDay: parsedDay, category, icon });
+      await onSubmit({ name: name.trim(), defaultAmount: parsedAmount, dueDay: parsedDay, category, icon, scope: inFamily ? scope : "PERSONAL" });
       setName("");
       setAmount("");
       setDueDay("1");
       setCategory("UTILITIES");
       setIcon("receipt");
+      setScope("PERSONAL");
     } finally {
       setSaving(false);
     }
@@ -187,6 +191,16 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
         <Field label={t("bills.billName")} placeholder={t("bills.billNamePlaceholder")} value={name} onChangeText={setName} />
         <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
         <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} />
+        {inFamily ? (
+          <SegmentedControl
+            segments={[
+              { value: "PERSONAL", label: t("scope.personal") },
+              { value: "HOUSE", label: t("scope.house") }
+            ]}
+            value={scope}
+            onChange={(value) => setScope(value as TransactionScope)}
+          />
+        ) : null}
         <View>
           <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
           <View style={styles.grid}>

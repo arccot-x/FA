@@ -1,4 +1,4 @@
-import { BillStatus, ExpenseCategory } from "@prisma/client";
+import { BillStatus, ExpenseCategory, MemberStatus, TransactionScope } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -8,6 +8,21 @@ import { dueDateFor, parseMonth } from "../utils/month";
 import { requireUserAccess } from "../utils/requireUserAccess";
 
 export const billsRouter = Router();
+
+// Validates house scope (must be an active member) and returns the fields to store.
+async function resolveScope(userId: string, scope: TransactionScope | undefined, familyId: string | null | undefined) {
+  if (scope !== TransactionScope.HOUSE) {
+    return { scope: TransactionScope.PERSONAL, familyId: null };
+  }
+  if (!familyId) {
+    throw new Error("A family is required for house bills.");
+  }
+  const member = await prisma.familyMember.findUnique({ where: { familyId_userId: { familyId, userId } } });
+  if (!member || member.status !== MemberStatus.ACTIVE) {
+    throw new Error("You are not a member of this family.");
+  }
+  return { scope: TransactionScope.HOUSE, familyId };
+}
 
 billsRouter.get(
   "/:userId",
@@ -25,6 +40,8 @@ const templateSchema = z.object({
   dueDay: z.number().int().min(1).max(31),
   icon: z.string().default("receipt"),
   autopay: z.boolean().default(false),
+  scope: z.nativeEnum(TransactionScope).optional(),
+  familyId: z.string().nullable().optional(),
   notes: z.string().optional()
 });
 
@@ -33,8 +50,9 @@ billsRouter.post(
   asyncHandler(async (req, res) => {
     requireUserAccess(req, req.params.userId);
     const input = templateSchema.parse(req.body);
+    const resolved = await resolveScope(req.params.userId, input.scope, input.familyId);
     const template = await prisma.billTemplate.create({
-      data: { ...input, userId: req.params.userId }
+      data: { ...input, ...resolved, userId: req.params.userId }
     });
 
     res.status(201).json(template);
@@ -46,9 +64,10 @@ billsRouter.patch(
   asyncHandler(async (req, res) => {
     requireUserAccess(req, req.params.userId);
     const input = templateSchema.partial().extend({ active: z.boolean().optional() }).parse(req.body);
+    const data = input.scope === undefined ? input : { ...input, ...(await resolveScope(req.params.userId, input.scope, input.familyId)) };
     const template = await prisma.billTemplate.update({
       where: { id: req.params.templateId, userId: req.params.userId },
-      data: input
+      data
     });
 
     res.json(template);

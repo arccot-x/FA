@@ -1,4 +1,4 @@
-import { FamilyRole, MemberStatus, TransactionScope } from "@prisma/client";
+import { BillStatus, FamilyRole, MemberStatus, TransactionScope } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -200,7 +200,7 @@ familiesRouter.get(
     const start = monthStart(cycleMonth);
     const end = monthStart(new Date(Date.UTC(cycleMonth.getUTCFullYear(), cycleMonth.getUTCMonth() + 1, 1)));
 
-    const [cycles, transactions, users] = await Promise.all([
+    const [cycles, transactions, houseBills, users] = await Promise.all([
       prisma.incomeCycle.findMany({ where: { userId: { in: memberIds }, cycleMonth } }),
       prisma.transaction.findMany({
         where: { familyId: membership.familyId, scope: TransactionScope.HOUSE, occurredAt: { gte: start, lt: end } },
@@ -208,16 +208,23 @@ familiesRouter.get(
         orderBy: { occurredAt: "desc" },
         take: 100
       }),
+      prisma.billOccurrence.findMany({
+        where: { userId: { in: memberIds }, cycleMonth, billTemplate: { scope: TransactionScope.HOUSE, familyId: membership.familyId } }
+      }),
       prisma.user.findMany({ where: { id: { in: memberIds } }, select: { id: true, name: true } })
     ]);
 
     const nameById = new Map(users.map((u) => [u.id, u.name]));
     const pool = cycles.reduce((sum, c) => sum + Number(c.houseAllocation ?? 0), 0);
-    const spent = transactions.reduce((sum, txn) => sum + Number(txn.amount ?? 0), 0);
+    const txnSpent = transactions.reduce((sum, txn) => sum + Number(txn.amount ?? 0), 0);
+    const paidBills = houseBills.filter((b) => b.status === BillStatus.PAID).reduce((sum, b) => sum + Number(b.amount ?? 0), 0);
+    const billsDue = houseBills.filter((b) => b.status === BillStatus.UNPAID).reduce((sum, b) => sum + Number(b.amount ?? 0), 0);
+    const spent = txnSpent + paidBills;
 
     res.json({
       pool,
       spent,
+      billsDue,
       balance: pool - spent,
       transactions: transactions.map((txn) => ({ ...txn, spenderName: nameById.get(txn.userId) ?? "Member" }))
     });

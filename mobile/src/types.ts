@@ -77,6 +77,8 @@ export type BillOccurrence = {
     category: ExpenseCategory;
     icon: string;
     autopay: boolean;
+    scope?: TransactionScope;
+    familyId?: string | null;
   };
 };
 
@@ -105,6 +107,7 @@ export type Transaction = {
 export type HouseData = {
   pool: number;
   spent: number;
+  billsDue: number;
   balance: number;
   transactions: Transaction[];
 };
