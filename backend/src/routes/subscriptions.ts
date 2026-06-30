@@ -9,10 +9,7 @@ import { getAuthUserId } from "../utils/requireUserAccess";
 export const subscriptionsRouter = Router();
 
 const checkoutSchema = z.object({
-  plan: z.nativeEnum(SubscriptionPlan),
-  billingName: z.string().min(1).max(120),
-  billingEmail: z.string().email(),
-  cardNumber: z.string().min(4).max(32)
+  plan: z.nativeEnum(SubscriptionPlan)
 });
 
 subscriptionsRouter.get(
@@ -47,24 +44,23 @@ subscriptionsRouter.post(
   asyncHandler(async (req, res) => {
     const userId = getAuthUserId(req);
     const input = checkoutSchema.parse(req.body);
-    const digits = input.cardNumber.replace(/\D/g, "");
 
     const subscription = await prisma.subscription.upsert({
       where: { userId },
       update: {
         plan: input.plan,
         active: true,
-        billingName: input.billingName.trim(),
-        billingEmail: input.billingEmail.trim().toLowerCase(),
-        cardLast4: digits.slice(-4) || "0000"
+        billingName: null,
+        billingEmail: null,
+        cardLast4: null
       },
       create: {
         userId,
         plan: input.plan,
         active: true,
-        billingName: input.billingName.trim(),
-        billingEmail: input.billingEmail.trim().toLowerCase(),
-        cardLast4: digits.slice(-4) || "0000"
+        billingName: null,
+        billingEmail: null,
+        cardLast4: null
       }
     });
 

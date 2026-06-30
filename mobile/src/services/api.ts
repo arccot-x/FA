@@ -199,7 +199,7 @@ export async function getSubscription() {
   return request<{ subscription: SubscriptionInfo }>("/subscriptions/me");
 }
 
-export async function checkoutSubscription(input: { plan: SubscriptionPlanId; billingName: string; billingEmail: string; cardNumber: string }) {
+export async function checkoutSubscription(input: { plan: SubscriptionPlanId }) {
   return request<{ subscription: SubscriptionInfo }>("/subscriptions/checkout", {
     method: "POST",
     body: JSON.stringify(input)

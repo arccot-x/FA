@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
-import { Button, Field, IconButton, PressableScale } from "../components/ui";
+import { Button, IconButton, PressableScale } from "../components/ui";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { SUBSCRIPTION_PLANS, useSubscription } from "../utils/SubscriptionProvider";
@@ -17,9 +17,6 @@ export function SubscriptionScreen() {
   const { t } = useI18n();
   const { subscription, loading, refreshSubscription, saveSubscription } = useSubscription();
   const [planId, setPlanId] = useState<SubscriptionPlanId>(subscription.plan);
-  const [billingName, setBillingName] = useState(subscription.billingName ?? "");
-  const [billingEmail, setBillingEmail] = useState(subscription.billingEmail ?? "");
-  const [cardNumber, setCardNumber] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -29,8 +26,6 @@ export function SubscriptionScreen() {
 
   useEffect(() => {
     setPlanId(subscription.plan);
-    setBillingName(subscription.billingName ?? "");
-    setBillingEmail(subscription.billingEmail ?? "");
   }, [subscription]);
 
   const selectedPlan = SUBSCRIPTION_PLANS.find((item) => item.id === planId) ?? SUBSCRIPTION_PLANS[0];
@@ -38,12 +33,7 @@ export function SubscriptionScreen() {
   const isCurrent = subscription.active && subscription.plan === planId;
 
   const save = async () => {
-    if (!billingName.trim() || !billingEmail.trim()) {
-      Alert.alert(t("subscription.title"), t("subscription.missingInfo"));
-      return;
-    }
-    await saveSubscription({ plan: planId, billingName: billingName.trim(), billingEmail: billingEmail.trim(), cardNumber });
-    setCardNumber("");
+    await saveSubscription({ plan: planId });
     Alert.alert(t("subscription.title"), t("subscription.saved"));
   };
 
@@ -63,7 +53,7 @@ export function SubscriptionScreen() {
               {subscription.active ? t("subscription.activePlan", { plan: activePlan.name }) : t("subscription.notSubscribed")}
             </Text>
             <Text style={[styles.statusMeta, { color: theme.colors.subtleText }]}>
-              {subscription.active ? t("subscription.cardEnding", { last4: subscription.cardLast4 ?? "0000" }) : t("subscription.lockedHint")}
+              {subscription.active ? t("subscription.testMode") : t("subscription.lockedHint")}
             </Text>
           </View>
         </Animated.View>
@@ -75,14 +65,11 @@ export function SubscriptionScreen() {
         </View>
 
         <Animated.View entering={FadeInDown.delay(220).duration(320)} style={[styles.form, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
-          <Text style={[styles.formTitle, { color: theme.colors.text }]}>{t("subscription.payment")}</Text>
-          <Field label={t("subscription.name")} value={billingName} onChangeText={setBillingName} placeholder="Test Customer" />
-          <Field label={t("subscription.email")} value={billingEmail} onChangeText={setBillingEmail} autoCapitalize="none" keyboardType="email-address" placeholder="test@example.com" />
-          <Field label={t("subscription.cardNumber")} value={cardNumber} onChangeText={setCardNumber} keyboardType="number-pad" placeholder="4242 4242 4242 4242" />
+          <Text style={[styles.formTitle, { color: theme.colors.text }]}>{t("subscription.switchPlan")}</Text>
           <Text style={[styles.statusMeta, { color: theme.colors.subtleText }]}>{t("subscription.hint")}</Text>
           <Button
             label={isCurrent ? t("subscription.update") : t("subscription.subscribe", { price: `$${selectedPlan.price}` })}
-            icon="credit-card-check-outline"
+            icon="check-circle-outline"
             loading={loading}
             onPress={() => void save()}
           />

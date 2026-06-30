@@ -35,7 +35,7 @@ type SubscriptionContextValue = {
   plan: SubscriptionPlan;
   loading: boolean;
   refreshSubscription: () => Promise<void>;
-  saveSubscription: (input: { plan: SubscriptionPlanId; billingName: string; billingEmail: string; cardNumber: string }) => Promise<void>;
+  saveSubscription: (input: { plan: SubscriptionPlanId }) => Promise<void>;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
@@ -58,7 +58,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveSubscription = useCallback(async (input: { plan: SubscriptionPlanId; billingName: string; billingEmail: string; cardNumber: string }) => {
+  const saveSubscription = useCallback(async (input: { plan: SubscriptionPlanId }) => {
     setLoading(true);
     try {
       const result = await api.checkoutSubscription(input);
