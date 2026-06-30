@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -23,6 +23,7 @@ export function AnalyticsScreen() {
   const { t, locale } = useI18n();
   const money = useMoney();
   const { load, loading, transactions, incomeCycle, bills } = useFinanceStore();
+  const scrollRef = useRef<ScrollView>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,6 +96,7 @@ export function AnalyticsScreen() {
   return (
     <Screen title={t("analytics.title")} subtitle={t("analytics.subtitle")}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
@@ -104,7 +106,7 @@ export function AnalyticsScreen() {
           <MetricTile label={t("analytics.expenses")} value={money(analytics.expenses)} icon="trending-down" tone="accent" />
         </Animated.View>
 
-        <TutorialTarget id="analytics.flow">
+        <TutorialTarget id="analytics.flow" prepare={() => scrollRef.current?.scrollTo({ y: 70, animated: true })}>
           <Animated.View
             entering={FadeInDown.delay(60).duration(380)}
             style={[styles.panel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}

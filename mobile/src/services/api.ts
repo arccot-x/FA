@@ -239,10 +239,10 @@ export async function deleteAccount(input: { userId: string }) {
   await request<void>(`/users/${input.userId}`, { method: "DELETE" });
 }
 
-export async function updateProfile(input: { userId: string; name: string; email: string }) {
+export async function updateProfile(input: { userId: string; name: string; email: string; phoneNumber?: string | null; avatarUrl?: string | null; householdRole?: string | null }) {
   return request<User>(`/users/${input.userId}`, {
     method: "PATCH",
-    body: JSON.stringify({ name: input.name, email: input.email })
+    body: JSON.stringify({ name: input.name, email: input.email, phoneNumber: input.phoneNumber, avatarUrl: input.avatarUrl, householdRole: input.householdRole })
   });
 }
 

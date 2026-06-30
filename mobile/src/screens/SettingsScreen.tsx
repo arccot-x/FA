@@ -1,8 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
-import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Image, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
 import { Button, Chip, PressableScale, SegmentedControl } from "../components/ui";
@@ -43,6 +43,7 @@ export function SettingsScreen() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const scrollRef = useRef<ScrollView>(null);
 
   const toggleReminders = async (next: boolean) => {
     const ok = await setRemindersEnabled(next);
@@ -90,11 +91,12 @@ export function SettingsScreen() {
   return (
     <Screen title={t("settings.title")}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
       >
-        <TutorialTarget id="settings.tabs">
+        <TutorialTarget id="settings.tabs" prepare={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
           <Animated.View entering={FadeInDown.duration(320)} style={styles.tabs}>
             <SettingsTabBar tabs={tabSegments} value={activeTab} onChange={setActiveTab} theme={theme} />
           </Animated.View>
@@ -193,9 +195,13 @@ export function SettingsScreen() {
           <Section delay={40} title={t("settings.account")} theme={theme}>
             {user ? (
               <View style={[styles.account, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
-                <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
-                  <Text style={[styles.avatarText, { color: theme.colors.primary }]}>{(user.name || user.email).slice(0, 1).toUpperCase()}</Text>
-                </View>
+                {user.avatarUrl ? (
+                  <Image source={{ uri: user.avatarUrl }} style={[styles.avatar, { backgroundColor: theme.colors.surfaceAlt }]} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: theme.colors.primarySoft }]}>
+                    <Text style={[styles.avatarText, { color: theme.colors.primary }]}>{(user.name || user.email).slice(0, 1).toUpperCase()}</Text>
+                  </View>
+                )}
                 <View style={styles.accountText}>
                   <Text style={[styles.accountName, { color: theme.colors.text }]} numberOfLines={1}>
                     {user.name}
@@ -203,6 +209,11 @@ export function SettingsScreen() {
                   <Text style={[styles.accountEmail, { color: theme.colors.subtleText }]} numberOfLines={1}>
                     {user.email}
                   </Text>
+                  {user.householdRole || user.phoneNumber ? (
+                    <Text style={[styles.accountMeta, { color: theme.colors.muted }]} numberOfLines={1}>
+                      {[user.householdRole, user.phoneNumber].filter(Boolean).join(" · ")}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             ) : null}
@@ -332,6 +343,7 @@ const styles = StyleSheet.create({
   accountText: { flex: 1, minWidth: 0 },
   accountName: { fontSize: 16, fontWeight: "800" },
   accountEmail: { fontSize: 13, fontWeight: "600", marginTop: 2 },
+  accountMeta: { fontSize: 12, fontWeight: "700", marginTop: 2 },
   accountActions: { gap: 12, marginTop: 12 },
   about: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", marginTop: 8 },
   aboutText: { fontSize: 13, fontWeight: "700" }

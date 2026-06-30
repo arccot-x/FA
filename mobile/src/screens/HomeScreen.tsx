@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
@@ -34,6 +34,7 @@ export function HomeScreen() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<Transaction | null>(null);
   const [view, setView] = useState<"personal" | "house">("personal");
+  const listRef = useRef<FlatList<Transaction>>(null);
 
   const { user, load, loading, offline, pendingSyncCount, syncing, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
@@ -127,6 +128,7 @@ export function HomeScreen() {
       action={<IconButton icon="tune-variant" onPress={() => setIncomeOpen(true)} accessibilityLabel={t("income.title")} />}
     >
       <FlatList
+        ref={listRef}
         contentContainerStyle={styles.content}
         data={listData.slice(0, 8)}
         keyExtractor={(item) => item.id}
@@ -252,7 +254,7 @@ export function HomeScreen() {
         }
       />
 
-      <TutorialTarget id="home.quickAdd" style={styles.fabTarget}>
+      <TutorialTarget id="home.quickAdd" style={styles.fabTarget} prepare={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
         <PressableScale
           accessibilityLabel={t("home.quickAdd")}
           style={[styles.fab, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.pill, ...theme.shadow("lg") }]}

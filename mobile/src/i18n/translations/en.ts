@@ -157,6 +157,8 @@ export const en = {
     scanning: "Reading receipt…",
     failed: "Couldn't read the receipt. Please enter the details manually.",
     disabledHint: "AI receipt scanning is off in Settings.",
+    filled: "AI filled",
+    filledAt: "AI filled this receipt {time}",
     needKey: "Add your Grok API key in Settings → AI receipt scan first.",
     saved: "Saved"
   },
@@ -280,6 +282,11 @@ export const en = {
     title: "Profile",
     save: "Save profile",
     invalid: "Enter a name and valid email address.",
+    avatarInvalid: "Avatar URL must start with http:// or https://.",
+    phone: "Phone",
+    role: "Household role",
+    rolePlaceholder: "Owner, partner, parent...",
+    avatarUrl: "Avatar URL",
     saveFailed: "Profile could not be saved."
   },
   help: {
@@ -307,6 +314,8 @@ export const en = {
     next: "Next",
     skip: "Skip",
     finish: "Finish",
+    promptTitle: "Want a quick tour?",
+    promptBody: "A short guided walkthrough can show where to add receipts, manage bills, use Vault, read Insights and adjust Settings.",
     homeTitle: "Quick add",
     homeBody: "Tap here to add an expense, income, receipt photo or gallery image.",
     billsTitle: "Bills",

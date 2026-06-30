@@ -159,6 +159,8 @@ export const tr: Translations = {
     scanning: "Fiş okunuyor…",
     failed: "Fiş okunamadı. Lütfen bilgileri elle gir.",
     disabledHint: "Yapay zeka ile fiş tarama Ayarlar'da kapalı.",
+    filled: "YZ doldurdu",
+    filledAt: "Bu fiş YZ ile dolduruldu: {time}",
     needKey: "Önce Ayarlar → Yapay zeka ile fiş taramadan Grok API anahtarını ekle.",
     saved: "Kaydedildi"
   },
@@ -282,6 +284,11 @@ export const tr: Translations = {
     title: "Profil",
     save: "Profili kaydet",
     invalid: "Bir ad ve geçerli e-posta adresi gir.",
+    avatarInvalid: "Avatar URL'si http:// veya https:// ile başlamalı.",
+    phone: "Telefon",
+    role: "Evdeki rol",
+    rolePlaceholder: "Sahip, eş, ebeveyn...",
+    avatarUrl: "Avatar URL",
     saveFailed: "Profil kaydedilemedi."
   },
   help: {
@@ -309,6 +316,8 @@ export const tr: Translations = {
     next: "İleri",
     skip: "Atla",
     finish: "Bitir",
+    promptTitle: "Kısa bir tur ister misin?",
+    promptBody: "Kısa rehber; fiş ekleme, faturalar, Kasa, Analiz ve Ayarlar bölümlerini gösterir.",
     homeTitle: "Hızlı ekle",
     homeBody: "Harcama, gelir, fiş fotoğrafı veya galeri görseli eklemek için buraya dokun.",
     billsTitle: "Faturalar",

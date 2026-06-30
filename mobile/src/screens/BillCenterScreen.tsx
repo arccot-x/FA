@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Alert, FlatList, Modal, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
@@ -20,6 +20,7 @@ export function BillCenterScreen() {
   const { t } = useI18n();
   const money = useMoney();
   const { bills, load, loading, markBill, editBill, addBill, deleteBill } = useFinanceStore();
+  const listRef = useRef<FlatList<BillOccurrence>>(null);
   const [editing, setEditing] = useState<BillOccurrence | null>(null);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -87,6 +88,7 @@ export function BillCenterScreen() {
       action={<IconButton icon="plus" tone="primary" onPress={() => setAdding(true)} accessibilityLabel={t("bills.newBill")} />}
     >
       <FlatList
+        ref={listRef}
         contentContainerStyle={styles.content}
         data={data}
         keyExtractor={(item) => item.id}
@@ -94,7 +96,7 @@ export function BillCenterScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
           <Animated.View entering={FadeInDown.duration(400)}>
-            <TutorialTarget id="bills.primary">
+            <TutorialTarget id="bills.primary" prepare={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
               <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.xl, ...theme.shadow("sm") }]}>
                 <View>
                   <Text style={[styles.summaryLabel, { color: theme.colors.subtleText }]}>{t("bills.remaining")}</Text>

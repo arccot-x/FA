@@ -40,7 +40,7 @@ type FinanceState = {
   requestPasswordReset: (input: { email: string }) => Promise<void>;
   resetPassword: (input: { email: string; code: string; newPassword: string }) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (input: { name: string; email: string }) => Promise<void>;
+  updateProfile: (input: { name: string; email: string; phoneNumber?: string | null; avatarUrl?: string | null; householdRole?: string | null }) => Promise<void>;
   load: () => Promise<void>;
   processPendingSync: () => Promise<void>;
   addManualExpense: (amount: number, category: ExpenseCategory, scope?: TransactionScope, type?: import("../types").TransactionType) => Promise<void>;
@@ -461,10 +461,24 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   updateProfile: async (input) => {
     const user = requireUser(get().user);
-    const nextUser = { ...user, name: input.name.trim(), email: input.email.trim().toLowerCase() };
+    const nextUser = {
+      ...user,
+      name: input.name.trim(),
+      email: input.email.trim().toLowerCase(),
+      phoneNumber: input.phoneNumber?.trim() || null,
+      avatarUrl: input.avatarUrl?.trim() || null,
+      householdRole: input.householdRole?.trim() || null
+    };
     set({ user: nextUser });
     try {
-      const saved = await api.updateProfile({ userId: user.id, name: nextUser.name, email: nextUser.email });
+      const saved = await api.updateProfile({
+        userId: user.id,
+        name: nextUser.name,
+        email: nextUser.email,
+        phoneNumber: nextUser.phoneNumber,
+        avatarUrl: nextUser.avatarUrl,
+        householdRole: nextUser.householdRole
+      });
       set({ user: saved });
       void saveCache("user", saved);
     } catch (error) {

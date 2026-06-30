@@ -26,6 +26,9 @@ export type User = {
   id: string;
   email: string;
   name: string;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+  householdRole?: string | null;
   defaultMonthlyIncome: string | number;
   paydayDay: number;
   variableIncomeEnabled: boolean;

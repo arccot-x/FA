@@ -1,17 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Modal, StyleSheet, Text, View } from "react-native";
 import type { RefObject } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import { Button } from "../components/ui";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { navigationRef } from "./navigation";
-import { PREF_KEYS, setPref } from "./prefs";
+import { getPref, PREF_KEYS, setPref } from "./prefs";
 
 type TutorialContextValue = {
   start: () => void;
-  registerTarget: (id: string, ref: RefObject<View>) => void;
+  registerTarget: (id: string, ref: RefObject<View>, options?: TutorialTargetOptions) => void;
   unregisterTarget: (id: string) => void;
+};
+
+type TutorialTargetOptions = {
+  prepare?: () => void;
 };
 
 type TutorialStep = {
@@ -69,13 +73,15 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [index, setIndex] = useState<number | null>(null);
   const [measuredRect, setMeasuredRect] = useState<TutorialRect | null>(null);
-  const targets = useRef(new Map<string, RefObject<View>>());
+  const [promptVisible, setPromptVisible] = useState(false);
+  const targets = useRef(new Map<string, { ref: RefObject<View>; options?: TutorialTargetOptions }>());
   const size = Dimensions.get("window");
   const current = index === null ? null : steps[index];
 
   const measureStep = useCallback((stepIndex: number) => {
     const step = steps[stepIndex];
-    const ref = targets.current.get(step.target);
+    const registered = targets.current.get(step.target);
+    const ref = registered?.ref;
     if (!ref?.current) {
       setMeasuredRect(step.fallback(size));
       return;
@@ -93,16 +99,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     setIndex(stepIndex);
     setMeasuredRect(null);
     navigateToStep(stepIndex);
-    setTimeout(() => measureStep(stepIndex), 380);
+    setTimeout(() => targets.current.get(steps[stepIndex].target)?.options?.prepare?.(), 280);
+    setTimeout(() => measureStep(stepIndex), 620);
   }, [measureStep]);
 
   const value = useMemo<TutorialContextValue>(
     () => ({
       start: () => {
+        setPromptVisible(false);
         goToStep(0);
       },
-      registerTarget: (id, ref) => {
-        targets.current.set(id, ref);
+      registerTarget: (id, ref, options) => {
+        targets.current.set(id, { ref, options });
       },
       unregisterTarget: (id) => {
         targets.current.delete(id);
@@ -110,6 +118,29 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }),
     [goToStep]
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void (async () => {
+        const completed = await getPref(PREF_KEYS.tutorialCompleted);
+        const prompted = await getPref(PREF_KEYS.tutorialPrompted);
+        if (completed !== "true" && prompted !== "true") {
+          setPromptVisible(true);
+        }
+      })();
+    }, 900);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const dismissPrompt = () => {
+    void setPref(PREF_KEYS.tutorialPrompted, "true");
+    setPromptVisible(false);
+  };
+
+  const startFromPrompt = () => {
+    void setPref(PREF_KEYS.tutorialPrompted, "true");
+    value.start();
+  };
 
   const next = () => {
     if (index === null) return;
@@ -135,6 +166,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   return (
     <TutorialContext.Provider value={value}>
       {children}
+      <Modal transparent animationType="fade" visible={promptVisible} onRequestClose={dismissPrompt} statusBarTranslucent>
+        <View style={styles.promptBackdrop}>
+          <View style={[styles.promptCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("lg") }]}>
+            <Text style={[styles.tooltipTitle, { color: theme.colors.text }]}>{t("tutorial.promptTitle")}</Text>
+            <Text style={[styles.tooltipBody, { color: theme.colors.subtleText }]}>{t("tutorial.promptBody")}</Text>
+            <View style={styles.tooltipActions}>
+              <Button label={t("tutorial.skip")} variant="ghost" onPress={dismissPrompt} style={styles.tooltipButton} />
+              <Button label={t("help.startTutorial")} icon="play-circle-outline" onPress={startFromPrompt} style={styles.tooltipButton} />
+            </View>
+          </View>
+        </View>
+      </Modal>
       {current && rect ? (
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
           <View pointerEvents="none" style={[styles.dim, { left: 0, top: 0, right: 0, height: rect.y }]} />
@@ -164,14 +207,14 @@ export function useTutorial() {
   return value;
 }
 
-export function TutorialTarget({ id, children, style }: { id: string; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function TutorialTarget({ id, children, style, prepare }: { id: string; children: ReactNode; style?: StyleProp<ViewStyle>; prepare?: () => void }) {
   const ref = useRef<View>(null);
   const tutorial = useTutorial();
 
   useEffect(() => {
-    tutorial.registerTarget(id, ref);
+    tutorial.registerTarget(id, ref, { prepare });
     return () => tutorial.unregisterTarget(id);
-  }, [id, tutorial]);
+  }, [id, prepare, tutorial]);
 
   return (
     <View ref={ref} collapsable={false} style={style}>
@@ -218,5 +261,17 @@ const styles = StyleSheet.create({
   tooltipButton: {
     flex: 1,
     minHeight: 46
+  },
+  promptBackdrop: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.56)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 20
+  },
+  promptCard: {
+    borderWidth: 1,
+    padding: 18,
+    width: "100%"
   }
 });

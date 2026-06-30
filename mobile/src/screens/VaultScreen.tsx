@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, Linking, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
@@ -19,6 +19,7 @@ export function VaultScreen() {
   const theme = useTheme();
   const { t } = useI18n();
   const { vaultDocuments, load, loading, addVaultDocument, deleteVaultDocument } = useFinanceStore();
+  const listRef = useRef<FlatList<{ category: VaultCategory; documents: VaultDocument[] }>>(null);
   const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [title, setTitle] = useState("");
@@ -116,13 +117,14 @@ export function VaultScreen() {
       }
     >
       <FlatList
+        ref={listRef}
         contentContainerStyle={styles.content}
         data={grouped}
         keyExtractor={(item) => item.category}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
-          <TutorialTarget id="vault.filters">
+          <TutorialTarget id="vault.filters" prepare={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
             <View style={[styles.filterBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
               <PressableScale
                 onPress={() => setFilter("all")}
