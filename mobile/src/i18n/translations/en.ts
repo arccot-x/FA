@@ -10,7 +10,20 @@ export const en = {
     amount: "Amount",
     category: "Category",
     optional: "Optional",
-    loading: "Loading"
+    loading: "Loading",
+    fixFields: "Fix the highlighted fields and try again.",
+    saveFailed: "Could not save. Please try again.",
+    uploadFailed: "Could not upload. Please try again.",
+    requiredField: "This field is required.",
+    positiveAmount: "Enter an amount greater than 0.",
+    validAmount: "Enter a valid amount.",
+    validDay: "Enter a day from 1 to 31.",
+    validEmail: "Enter a valid email address.",
+    validUrl: "Enter a valid URL.",
+    saved: "Saved.",
+    uploaded: "Uploaded.",
+    deleted: "Deleted.",
+    updated: "Updated."
   },
   tabs: {
     home: "Home",
@@ -29,6 +42,7 @@ export const en = {
     password: "Password",
     newPassword: "New password",
     forgotPassword: "Forgot password?",
+    demo: "Try demo account",
     backToLogin: "Back to login",
     resetCode: "Reset code",
     sendResetCode: "Send reset code",
@@ -64,7 +78,10 @@ export const en = {
   },
   sync: {
     pending: "{count} change(s) waiting to sync",
-    syncing: "Syncing saved changes..."
+    syncing: "Syncing saved changes...",
+    refreshFailed: "Could not refresh. Showing the latest saved data.",
+    lastSynced: "Last synced {time}",
+    retry: "Retry"
   },
   income: {
     title: "Income",
@@ -312,8 +329,10 @@ export const en = {
   },
   tutorial: {
     next: "Next",
+    back: "Back",
     skip: "Skip",
     finish: "Finish",
+    stepCount: "{current} of {total}",
     promptTitle: "Want a quick tour?",
     promptBody: "A short guided walkthrough can show where to add receipts, manage bills, use Vault, read Insights and adjust Settings.",
     homeTitle: "Quick add",
@@ -402,7 +421,8 @@ export const en = {
     incomeStep: "What's your monthly income?",
     paydayStep: "Which day are you usually paid?",
     next: "Continue",
-    start: "Get started"
+    start: "Get started",
+    useSample: "Use sample setup"
   },
   account: {
     changePassword: "Change password",
@@ -412,6 +432,8 @@ export const en = {
     deleteAccount: "Delete account",
     deleteTitle: "Delete account?",
     deleteMessage: "This permanently deletes your account and all of its data. This cannot be undone.",
+    deleteSecondTitle: "Delete everything permanently?",
+    deleteSecondMessage: "This is the final confirmation. Your bills, receipts, vault documents and profile will be removed.",
     deleteConfirm: "Delete everything"
   }
 };

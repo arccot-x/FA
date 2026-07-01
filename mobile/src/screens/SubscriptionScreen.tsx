@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
-import { Button, IconButton, PressableScale } from "../components/ui";
+import { Button, FormMessage, IconButton, PressableScale } from "../components/ui";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { SUBSCRIPTION_PLANS, useSubscription } from "../utils/SubscriptionProvider";
+import { useToast } from "../utils/ToastProvider";
 import type { SubscriptionPlan } from "../utils/SubscriptionProvider";
 import type { SubscriptionPlanId } from "../types";
 
@@ -15,8 +16,10 @@ export function SubscriptionScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { subscription, loading, refreshSubscription, saveSubscription } = useSubscription();
   const [planId, setPlanId] = useState<SubscriptionPlanId>(subscription.plan);
+  const [error, setError] = useState<string | undefined>();
 
   useFocusEffect(
     useCallback(() => {
@@ -33,8 +36,13 @@ export function SubscriptionScreen() {
   const isCurrent = subscription.active && subscription.plan === planId;
 
   const save = async () => {
-    await saveSubscription({ plan: planId });
-    Alert.alert(t("subscription.title"), t("subscription.saved"));
+    setError(undefined);
+    try {
+      await saveSubscription({ plan: planId });
+      showToast(t("subscription.saved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
+    }
   };
 
   return (
@@ -67,6 +75,7 @@ export function SubscriptionScreen() {
         <Animated.View entering={FadeInDown.delay(220).duration(320)} style={[styles.form, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
           <Text style={[styles.formTitle, { color: theme.colors.text }]}>{t("subscription.switchPlan")}</Text>
           <Text style={[styles.statusMeta, { color: theme.colors.subtleText }]}>{t("subscription.hint")}</Text>
+          <FormMessage message={error} />
           <Button
             label={isCurrent ? t("subscription.update") : t("subscription.subscribe", { price: `$${selectedPlan.price}` })}
             icon="check-circle-outline"

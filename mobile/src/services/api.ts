@@ -57,6 +57,10 @@ export async function loginAccount(input: { email: string; password: string }) {
   });
 }
 
+export async function loginDemoAccount() {
+  return request<AuthPayload>("/auth/demo", { method: "POST" });
+}
+
 export async function requestPasswordReset(input: { email: string }) {
   return request<{ ok: boolean }>("/auth/request-password-reset", {
     method: "POST",

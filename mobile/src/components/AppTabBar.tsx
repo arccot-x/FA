@@ -71,7 +71,7 @@ export function AppTabBar({ state, navigation }: MaterialTopTabBarProps) {
         return (
           <PressableScale key={route.key} accessibilityRole="button" accessibilityState={{ selected: focused }} onPress={onPress} scaleTo={0.9} style={styles.tab}>
             <MaterialCommunityIcons color={color} name={(icons[route.name] ?? "circle") as never} size={24} />
-            <Text numberOfLines={1} style={[styles.label, { color }]}>
+            <Text adjustsFontSizeToFit numberOfLines={1} style={[styles.label, { color }]}>
               {t(labelKeys[route.name] as never)}
             </Text>
           </PressableScale>
@@ -92,11 +92,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
+    minWidth: 0,
     paddingVertical: 2
   },
   label: {
     fontSize: 11,
-    fontWeight: "700"
+    fontWeight: "700",
+    maxWidth: "100%"
   },
   indicatorWrap: {
     position: "absolute",

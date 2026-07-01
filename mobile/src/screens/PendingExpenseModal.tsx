@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ModalSheet, Field, Button, Chip, ImageViewerModal, PressableScale, SegmentedControl } from "../components/ui";
+import { ModalSheet, Field, Button, Chip, FormMessage, ImageViewerModal, PressableScale, SegmentedControl } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { scanReceipt } from "../utils/ai";
 import { useAiSettings } from "../utils/AiProvider";
+import { useToast } from "../utils/ToastProvider";
 import { toNumber } from "../utils/money";
 import { mergeReceiptScan, shouldAutoScanReceipt } from "../utils/receiptScan";
 import type { ExpenseCategory, Transaction, TransactionScope } from "../types";
@@ -22,6 +23,7 @@ type PendingExpenseModalProps = {
 export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }: PendingExpenseModalProps) {
   const { t, locale } = useI18n();
   const theme = useTheme();
+  const { showToast } = useToast();
   const { enabled: aiEnabled } = useAiSettings();
   const userId = useFinanceStore((state) => state.user?.id);
   const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
@@ -33,6 +35,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
   const [scope, setScope] = useState<TransactionScope>("PERSONAL");
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | undefined>();
   const [previewOpen, setPreviewOpen] = useState(false);
   const scannedFor = useRef<string | null>(null);
 
@@ -49,6 +52,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
       setNotes(transaction.notes ?? "");
       setCategory(transaction.category ?? "GROCERIES");
       setScope(transaction.scope ?? "PERSONAL");
+      setError(undefined);
     }
   }, [transaction]);
 
@@ -67,7 +71,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
         await saveReceiptScan(transaction, scan);
       }
     } catch {
-      if (!auto) Alert.alert(t("ai.title"), t("ai.failed"));
+      if (!auto) setError(t("ai.failed"));
     } finally {
       setScanning(false);
     }
@@ -86,10 +90,17 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
 
   const save = async () => {
     const parsedAmount = Number(amount);
-    if (!parsedAmount) return;
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError(t("common.positiveAmount"));
+      return;
+    }
+    setError(undefined);
     setSaving(true);
     try {
       await onSubmit({ amount: parsedAmount, category, merchant: merchant.trim() || undefined, notes: notes.trim() || undefined, scope: inFamily ? scope : "PERSONAL" });
+      showToast(t("common.saved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -99,7 +110,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
     if (!transaction || !onDelete) return;
     Alert.alert(t("transaction.deleteTitle"), t("transaction.deleteMessage"), [
       { text: t("common.cancel"), style: "cancel" },
-      { text: t("common.delete"), style: "destructive", onPress: () => void onDelete(transaction) }
+      { text: t("common.delete"), style: "destructive", onPress: () => void onDelete(transaction).then(() => showToast(t("common.deleted"))) }
     ]);
   };
 
@@ -136,7 +147,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
         ) : null}
 
         <AiFieldLabel label={t("common.amount")} scanned={Boolean(transaction?.aiScannedAt && amount)} />
-        <Field autoFocus={isPending && !receiptUri} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+        <Field autoFocus={isPending && !receiptUri} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} error={error === t("common.positiveAmount") ? error : undefined} />
         {inFamily ? (
           <SegmentedControl
             segments={[
@@ -159,6 +170,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
         </View>
         <AiFieldLabel label={t("pending.notes")} scanned={Boolean(transaction?.aiScannedAt && notes)} />
         <Field multiline value={notes} onChangeText={setNotes} style={styles.notes} />
+        <FormMessage message={error && error !== t("common.positiveAmount") ? error : undefined} />
         <Button label={t("pending.saveExpense")} icon="check" onPress={save} loading={saving} style={styles.save} />
         {onDelete && transaction ? (
           <Button label={t("transaction.delete")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} />

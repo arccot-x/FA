@@ -7,6 +7,7 @@ import { prisma } from "../lib/prisma";
 import { hashPassword, publicUser, signUserToken, verifyPassword, verifyUserToken } from "../services/auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { requireUserAccess } from "../utils/requireUserAccess";
+import { dueDateFor, monthStart } from "../utils/month";
 
 export const authRouter = Router();
 
@@ -87,6 +88,128 @@ authRouter.post(
 
     if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new Error("Invalid email or password.");
+    }
+
+    res.json({ user: publicUser(user), token: signUserToken(user) });
+  })
+);
+
+authRouter.post(
+  "/demo",
+  asyncHandler(async (_req, res) => {
+    const cycleMonth = monthStart();
+    const user = await prisma.user.upsert({
+      where: { email: "demo@frictionless.finance" },
+      update: {
+        name: "Demo User",
+        defaultMonthlyIncome: 4200,
+        paydayDay: 1,
+        variableIncomeEnabled: true
+      },
+      create: {
+        email: "demo@frictionless.finance",
+        name: "Demo User",
+        defaultMonthlyIncome: 4200,
+        paydayDay: 1,
+        variableIncomeEnabled: true
+      }
+    });
+
+    await prisma.subscription.upsert({
+      where: { userId: user.id },
+      update: { plan: "FAMILY_3", active: true },
+      create: { userId: user.id, plan: "FAMILY_3", active: true, billingEmail: user.email, billingName: user.name }
+    });
+
+    await prisma.incomeCycle.upsert({
+      where: { userId_cycleMonth: { userId: user.id, cycleMonth } },
+      update: { expected: 4200, actual: 4200, sourceType: "VARIABLE_EXPECTED" },
+      create: { userId: user.id, cycleMonth, expected: 4200, actual: 4200, sourceType: "VARIABLE_EXPECTED" }
+    });
+
+    const billSeeds = [
+      { name: "Rent", defaultAmount: 1450, dueDay: 1, category: "HOME" as const, icon: "home-city" },
+      { name: "Electric", defaultAmount: 118, dueDay: 12, category: "UTILITIES" as const, icon: "lightning-bolt" },
+      { name: "Internet", defaultAmount: 64, dueDay: 18, category: "SUBSCRIPTION" as const, icon: "wifi" }
+    ];
+
+    for (const seed of billSeeds) {
+      const template = await prisma.billTemplate.upsert({
+        where: { id: `demo-${user.id}-${seed.name.toLowerCase()}` },
+        update: {
+          name: seed.name,
+          defaultAmount: seed.defaultAmount,
+          dueDay: seed.dueDay,
+          category: seed.category,
+          icon: seed.icon,
+          active: true
+        },
+        create: {
+          id: `demo-${user.id}-${seed.name.toLowerCase()}`,
+          userId: user.id,
+          name: seed.name,
+          defaultAmount: seed.defaultAmount,
+          dueDay: seed.dueDay,
+          category: seed.category,
+          icon: seed.icon
+        }
+      });
+
+      await prisma.billOccurrence.upsert({
+        where: { billTemplateId_cycleMonth: { billTemplateId: template.id, cycleMonth } },
+        update: { amount: seed.defaultAmount, dueDate: dueDateFor(cycleMonth, seed.dueDay), status: seed.name === "Rent" ? "PAID" : "UNPAID" },
+        create: {
+          userId: user.id,
+          billTemplateId: template.id,
+          cycleMonth,
+          dueDate: dueDateFor(cycleMonth, seed.dueDay),
+          amount: seed.defaultAmount,
+          status: seed.name === "Rent" ? "PAID" : "UNPAID",
+          paidAt: seed.name === "Rent" ? new Date() : null
+        }
+      });
+    }
+
+    const existingTransactions = await prisma.transaction.count({ where: { userId: user.id } });
+    if (existingTransactions === 0) {
+      await prisma.transaction.createMany({
+        data: [
+          { userId: user.id, amount: 84.32, category: "GROCERIES", merchant: "Green Market", notes: "Weekly groceries", occurredAt: new Date(Date.now() - 2 * 86400000) },
+          { userId: user.id, amount: 18.5, category: "DINING", merchant: "Coffee Bar", occurredAt: new Date(Date.now() - 4 * 86400000) },
+          { userId: user.id, amount: 47.2, category: "GAS", merchant: "Fuel Stop", occurredAt: new Date(Date.now() - 6 * 86400000) },
+          { userId: user.id, amount: 120, category: "OTHER", merchant: "Receipt pending", status: "PENDING_DETAILS", source: "SNAP_SAVE", occurredAt: new Date(Date.now() - 1 * 86400000) }
+        ]
+      });
+    }
+
+    const existingVault = await prisma.vaultDocument.count({ where: { userId: user.id } });
+    if (existingVault === 0) {
+      await prisma.vaultDocument.createMany({
+        data: [
+          {
+            userId: user.id,
+            title: "Lease agreement",
+            category: "LEASE",
+            mimeGroup: "PDF",
+            fileName: "lease-agreement.pdf",
+            mimeType: "application/pdf",
+            fileSize: 124000,
+            url: "https://example.com/lease-agreement.pdf",
+            storagePath: `demo/${user.id}/lease-agreement.pdf`
+          },
+          {
+            userId: user.id,
+            title: "Warranty receipt",
+            category: "RECEIPT",
+            mimeGroup: "IMAGE",
+            fileName: "warranty-receipt.jpg",
+            mimeType: "image/jpeg",
+            fileSize: 86000,
+            url: "https://example.com/warranty-receipt.jpg",
+            storagePath: `demo/${user.id}/warranty-receipt.jpg`
+          }
+        ]
+      });
     }
 
     res.json({ user: publicUser(user), token: signUserToken(user) });

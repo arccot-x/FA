@@ -2,29 +2,33 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { Button, Field } from "../components/ui";
+import { Button, Field, FormMessage } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { SUBSCRIPTION_PLANS, useSubscription } from "../utils/SubscriptionProvider";
+import { useToast } from "../utils/ToastProvider";
 
 export function FamilySection() {
   const navigation = useNavigation();
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { user, family, familyInvites, createFamily, inviteFamilyMember, acceptInvite, declineInvite, leaveFamily, deleteFamily } = useFinanceStore();
   const { subscription } = useSubscription();
 
   const [name, setName] = useState("");
   const [inviteId, setInviteId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
   const run = async (fn: () => Promise<void>) => {
+    setError(undefined);
     setBusy(true);
     try {
       await fn();
     } catch (e) {
-      Alert.alert(t("family.title"), e instanceof Error ? e.message : t("auth.genericError"));
+      setError(e instanceof Error ? e.message : t("auth.genericError"));
     } finally {
       setBusy(false);
     }
@@ -118,6 +122,7 @@ export function FamilySection() {
             <View style={styles.block}>
               <Field label={t("family.inviteId")} placeholder={t("family.invitePlaceholder")} autoCapitalize="none" autoCorrect={false} value={inviteId} onChangeText={setInviteId} />
               {!canInvite ? <Text style={[styles.hint, { color: theme.colors.danger }]}>{t("family.limitReached")}</Text> : null}
+              <FormMessage message={error} />
               <Button
                 label={t("family.invite")}
                 icon="account-plus"
@@ -128,7 +133,7 @@ export function FamilySection() {
                     }
                     await inviteFamilyMember(inviteId.trim());
                     setInviteId("");
-                    Alert.alert(t("family.title"), t("family.invited"));
+                    showToast(t("family.invited"));
                   })
                 }
                 disabled={!canInvite || !inviteId.trim()}
@@ -145,7 +150,7 @@ export function FamilySection() {
             onPress={() =>
               Alert.alert(isOwner ? t("family.deleteTitle") : t("family.leaveTitle"), isOwner ? t("family.deleteMessage") : "", [
                 { text: t("common.cancel"), style: "cancel" },
-                { text: isOwner ? t("common.delete") : t("family.leave"), style: "destructive", onPress: () => void run(isOwner ? deleteFamily : leaveFamily) }
+                { text: isOwner ? t("common.delete") : t("family.leave"), style: "destructive", onPress: () => void run(isOwner ? deleteFamily : leaveFamily).then(() => showToast(isOwner ? t("common.deleted") : t("common.updated"))) }
               ])
             }
             style={styles.spaced}
@@ -164,7 +169,8 @@ export function FamilySection() {
             </View>
           ) : null}
           {!canCreateFamily ? <Button label={t("subscription.title")} icon="credit-card-outline" variant="secondary" onPress={() => navigation.navigate("Subscription" as never)} style={styles.spaced} /> : null}
-          <Field label={t("family.create")} placeholder={t("family.namePlaceholder")} value={name} onChangeText={setName} />
+          <Field label={t("family.create")} placeholder={t("family.namePlaceholder")} value={name} onChangeText={setName} error={error === t("common.requiredField") ? error : undefined} />
+          <FormMessage message={error && error !== t("common.requiredField") ? error : undefined} />
           <Button
             label={t("family.create")}
             icon="home-plus"
@@ -172,8 +178,12 @@ export function FamilySection() {
             loading={busy}
             onPress={() =>
               void run(async () => {
+                if (!name.trim()) {
+                  throw new Error(t("common.requiredField"));
+                }
                 await createFamily(name.trim());
                 setName("");
+                showToast(t("common.saved"));
               })
             }
             style={styles.spaced}

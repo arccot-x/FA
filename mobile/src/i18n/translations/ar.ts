@@ -12,7 +12,20 @@ export const ar: Translations = {
     amount: "المبلغ",
     category: "الفئة",
     optional: "اختياري",
-    loading: "جارٍ التحميل"
+    loading: "جارٍ التحميل",
+    fixFields: "صحح الحقول المميزة ثم حاول مرة أخرى.",
+    saveFailed: "تعذر الحفظ. حاول مرة أخرى.",
+    uploadFailed: "تعذر الرفع. حاول مرة أخرى.",
+    requiredField: "هذا الحقل مطلوب.",
+    positiveAmount: "أدخل مبلغاً أكبر من 0.",
+    validAmount: "أدخل مبلغاً صحيحاً.",
+    validDay: "أدخل يوماً من 1 إلى 31.",
+    validEmail: "أدخل بريداً إلكترونياً صحيحاً.",
+    validUrl: "أدخل رابطاً صحيحاً.",
+    saved: "تم الحفظ.",
+    uploaded: "تم الرفع.",
+    deleted: "تم الحذف.",
+    updated: "تم التحديث."
   },
   tabs: {
     home: "الرئيسية",
@@ -31,6 +44,7 @@ export const ar: Translations = {
     password: "كلمة المرور",
     newPassword: "كلمة مرور جديدة",
     forgotPassword: "هل نسيت كلمة المرور؟",
+    demo: "تجربة حساب تجريبي",
     backToLogin: "العودة لتسجيل الدخول",
     resetCode: "رمز إعادة التعيين",
     sendResetCode: "إرسال رمز إعادة التعيين",
@@ -65,8 +79,11 @@ export const ar: Translations = {
     quickAdd: "إضافة سريعة"
   },
   sync: {
-    pending: "{count} taghyir yantazir al-muzamana",
-    syncing: "Jari muzamanat al-taghyirat al-mahfuza..."
+    pending: "{count} تغيير بانتظار المزامنة",
+    syncing: "تتم مزامنة التغييرات المحفوظة...",
+    refreshFailed: "تعذر التحديث. يتم عرض آخر بيانات محفوظة.",
+    lastSynced: "آخر مزامنة {time}",
+    retry: "إعادة المحاولة"
   },
   income: {
     title: "الدخل",
@@ -115,15 +132,15 @@ export const ar: Translations = {
     invited: "تم إرسال الدعوة.",
     copyId: "نسخ المعرّف",
     copied: "تم نسخ المعرّف",
-    planLimit: "{plan} yasmah bi {count} ashkhas.",
-    memberUsage: "{used} min {count} amakn mustakhdama.",
-    limitReached: "Wasalt ila hadd al-ishtirak.",
-    lockedTitle: "Al-aaila muqfala",
-    lockedMessage: "Malik al-aaila yahtaj ila ishtirak aaili nashit.",
-    ownerMustSubscribe: "Malik al-aaila faqat yastatie fathaha.",
-    subscribeFirst: "Ishtarik li-insha aaila",
-    subscribeFirstHint: "Khutat al-aaila taftah amwal al-manzil al-mushtarika wa fawatir al-manzil wa daawat al-aada.",
-    familyPlanOptions: "Family 3 yashmaluka maa 3 ashkhas, wa Family 6 yashmaluka maa 6 ashkhas."
+    planLimit: "{plan} يسمح بما يصل إلى {count} أشخاص.",
+    memberUsage: "{used} من {count} أماكن مستخدمة.",
+    limitReached: "وصلت إلى حد الاشتراك.",
+    lockedTitle: "العائلة مقفلة",
+    lockedMessage: "يحتاج مالك العائلة إلى اشتراك عائلي نشط.",
+    ownerMustSubscribe: "مالك العائلة فقط يمكنه فتحها.",
+    subscribeFirst: "اشترك لإنشاء عائلة",
+    subscribeFirstHint: "خطط العائلة تفتح أموال المنزل المشتركة وفواتير المنزل ودعوات الأعضاء.",
+    familyPlanOptions: "Family 3 يشملك مع 3 أشخاص، وFamily 6 يشملك مع 6 أشخاص."
   },
   quickAdd: {
     title: "إضافة سريعة",
@@ -222,29 +239,29 @@ export const ar: Translations = {
     upload: "رفع إلى الخزنة",
     noDocuments: "لا مستندات",
     documentCount: "{count} ملف",
-    noReceipts: "La tujadu isalat mahfuza baad.",
-    allFiles: "Kul al-milafat",
-    receiptHistory: "Al-isalat ({count})",
-    delete: "Hadhf al-mustanad",
-    deleteTitle: "Hadhf al-mustanad?",
-    deleteMessage: "Sayutam hadhf hadha al-milaf nihaiyan."
+    noReceipts: "لا توجد إيصالات محفوظة بعد.",
+    allFiles: "كل الملفات",
+    receiptHistory: "الإيصالات ({count})",
+    delete: "حذف المستند",
+    deleteTitle: "حذف المستند؟",
+    deleteMessage: "سيتم حذف هذا الملف نهائياً."
   },
   subscription: {
-    title: "Al-ishtirak",
-    subtitle: "Ikhtar khutta wa iftah al-mizaat al-munasiba",
-    testMode: "Ishtirak tajribi",
+    title: "الاشتراك",
+    subtitle: "اختر خطة وافتح الميزات المناسبة",
+    testMode: "اشتراك تجريبي",
     activePlan: "{plan} nashit",
-    notSubscribed: "La yujad ishtirak nashit",
-    lockedHint: "Mizaat al-aaila muqfala hatta yamlik al-malik khutta aailiya nashita.",
-    memberLimit: "Hatta {count} ashkhas",
-    switchPlan: "Taghyir al-khutta",
-    hint: "Wad al-ikhtibar yasmah bitaghyir al-khutta fawran bidun tafasil dafa.",
-    save: "Hifz al-ishtirak",
-    update: "Tahdith al-ishtirak",
-    subscribe: "Ishtarik muqabil {price}",
-    saved: "Tam hifz al-ishtirak.",
-    familyIncluded: "Musharakat al-aaila mashmula",
-    personalOnly: "Hisab shakhsi faqat"
+    notSubscribed: "لا يوجد اشتراك نشط",
+    lockedHint: "ميزات العائلة مقفلة حتى يملك المالك خطة عائلية نشطة.",
+    memberLimit: "حتى {count} أشخاص",
+    switchPlan: "تغيير الخطة",
+    hint: "وضع الاختبار يسمح بتغيير الخطة فوراً دون تفاصيل دفع.",
+    save: "حفظ الاشتراك",
+    update: "تحديث الاشتراك",
+    subscribe: "اشترك مقابل {price}",
+    saved: "تم حفظ الاشتراك.",
+    familyIncluded: "مشاركة العائلة مشمولة",
+    personalOnly: "حساب شخصي فقط"
   },
   analytics: {
     title: "التحليلات",
@@ -314,8 +331,10 @@ export const ar: Translations = {
   },
   tutorial: {
     next: "التالي",
+    back: "السابق",
     skip: "تخطي",
     finish: "إنهاء",
+    stepCount: "{current} / {total}",
     promptTitle: "هل تريد جولة سريعة؟",
     promptBody: "جولة قصيرة توضّح إضافة الإيصالات والفواتير والخزنة والتحليلات والإعدادات.",
     homeTitle: "إضافة سريعة",
@@ -404,7 +423,8 @@ export const ar: Translations = {
     incomeStep: "ما هو دخلك الشهري؟",
     paydayStep: "في أي يوم تتقاضى راتبك عادةً؟",
     next: "متابعة",
-    start: "ابدأ"
+    start: "ابدأ",
+    useSample: "استخدام إعدادات نموذجية"
   },
   account: {
     changePassword: "تغيير كلمة المرور",
@@ -414,6 +434,8 @@ export const ar: Translations = {
     deleteAccount: "حذف الحساب",
     deleteTitle: "حذف الحساب؟",
     deleteMessage: "يحذف هذا حسابك وكل بياناته نهائياً. لا يمكن التراجع.",
+    deleteSecondTitle: "حذف كل شيء نهائياً؟",
+    deleteSecondMessage: "هذا هو التأكيد الأخير. ستتم إزالة فواتيرك وإيصالاتك ومستندات الخزنة وملفك.",
     deleteConfirm: "احذف كل شيء"
   }
 };

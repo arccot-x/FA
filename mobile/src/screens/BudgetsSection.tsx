@@ -2,12 +2,13 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { Button, Chip, Field, ModalSheet } from "../components/ui";
+import { Button, Chip, Field, FormMessage, ModalSheet } from "../components/ui";
 import { categoryIcon, expenseCategoryOptions } from "../constants/options";
 import { useBudgets } from "../utils/BudgetProvider";
 import { useMoney } from "../utils/CurrencyProvider";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
+import { useToast } from "../utils/ToastProvider";
 import type { ExpenseCategory } from "../types";
 
 type BudgetsSectionProps = {
@@ -72,18 +73,28 @@ export function BudgetsSection({ spentByCategory }: BudgetsSectionProps) {
 function BudgetsEditor({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const theme = useTheme();
+  const { showToast } = useToast();
   const { budgets, setBudget } = useBudgets();
   const [selected, setSelected] = useState<ExpenseCategory>("GROCERIES");
   const [value, setValue] = useState("");
+  const [error, setError] = useState<string | undefined>();
 
   const open = (category: ExpenseCategory) => {
     setSelected(category);
     setValue(budgets[category] ? String(budgets[category]) : "");
+    setError(undefined);
   };
 
   const apply = () => {
-    setBudget(selected, Math.max(0, Number(value) || 0));
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setError(t("common.validAmount"));
+      return;
+    }
+    setError(undefined);
+    setBudget(selected, parsed);
     onClose();
+    showToast(t("common.saved"));
   };
 
   return (
@@ -101,7 +112,8 @@ function BudgetsEditor({ visible, onClose }: { visible: boolean; onClose: () => 
             />
           ))}
         </View>
-        <Field label={t("budgets.cap")} keyboardType="decimal-pad" value={value} onChangeText={setValue} />
+        <Field label={t("budgets.cap")} keyboardType="decimal-pad" value={value} onChangeText={setValue} error={error} />
+        <FormMessage message={error ? t("common.fixFields") : undefined} />
         <Button label={t("common.save")} icon="content-save" onPress={apply} style={styles.saveButton} />
       </View>
     </ModalSheet>

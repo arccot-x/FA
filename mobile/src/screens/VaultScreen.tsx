@@ -5,12 +5,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, Linking, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Screen } from "../components/Screen";
-import { Button, Chip, Field, IconButton, ImageViewerModal, ModalSheet, PressableScale } from "../components/ui";
+import { Button, Chip, Field, FormMessage, IconButton, ImageViewerModal, LoadingState, ModalSheet, PressableScale } from "../components/ui";
 import { vaultCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { TutorialTarget } from "../utils/TutorialProvider";
+import { useToast } from "../utils/ToastProvider";
 import type { VaultCategory, VaultDocument } from "../types";
 
 const folderOrder: VaultCategory[] = ["LEASE", "TAX", "INSURANCE", "BANKING", "WARRANTY", "RECEIPT", "MEDICAL", "OTHER"];
@@ -18,6 +19,7 @@ const folderOrder: VaultCategory[] = ["LEASE", "TAX", "INSURANCE", "BANKING", "W
 export function VaultScreen() {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { vaultDocuments, load, loading, addVaultDocument, deleteVaultDocument } = useFinanceStore();
   const listRef = useRef<FlatList<{ category: VaultCategory; documents: VaultDocument[] }>>(null);
   const [uploading, setUploading] = useState(false);
@@ -26,6 +28,7 @@ export function VaultScreen() {
   const [category, setCategory] = useState<VaultCategory>("RECEIPT");
   const [preview, setPreview] = useState<{ uri: string; title: string } | null>(null);
   const [filter, setFilter] = useState<"all" | "receipts">("all");
+  const [error, setError] = useState<string | undefined>();
 
   const openDocument = (document: VaultDocument) => {
     if (document.mimeType.startsWith("image")) {
@@ -51,19 +54,28 @@ export function VaultScreen() {
     const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/*"], copyToCacheDirectory: true });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
+    setError(undefined);
     setDraft(asset);
     setTitle(asset.name.replace(/\.[^.]+$/, ""));
     setCategory(asset.mimeType === "application/pdf" ? "TAX" : "RECEIPT");
   };
 
   const uploadDraft = async () => {
-    if (!draft || !title.trim()) return;
+    if (!draft) return;
+    if (!title.trim()) {
+      setError(t("common.requiredField"));
+      return;
+    }
+    setError(undefined);
     setUploading(true);
     try {
       await addVaultDocument({ uri: draft.uri, name: draft.name, mimeType: draft.mimeType, title: title.trim(), category });
       setDraft(null);
       setTitle("");
       setCategory("RECEIPT");
+      showToast(t("common.uploaded"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -72,7 +84,7 @@ export function VaultScreen() {
   const confirmDelete = (document: VaultDocument) => {
     Alert.alert(t("vault.deleteTitle"), t("vault.deleteMessage"), [
       { text: t("common.cancel"), style: "cancel" },
-      { text: t("common.delete"), style: "destructive", onPress: () => void deleteVaultDocument(document) }
+      { text: t("common.delete"), style: "destructive", onPress: () => void deleteVaultDocument(document).then(() => showToast(t("common.deleted"))) }
     ]);
   };
 
@@ -124,7 +136,13 @@ export function VaultScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
-          <TutorialTarget id="vault.filters" prepare={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+          <TutorialTarget
+            id="vault.filters"
+            prepare={() => {
+              listRef.current?.scrollToOffset({ offset: 0, animated: true });
+              return new Promise<void>((resolve) => setTimeout(resolve, 360));
+            }}
+          >
             <View style={[styles.filterBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
               <PressableScale
                 onPress={() => setFilter("all")}
@@ -145,6 +163,7 @@ export function VaultScreen() {
             </View>
           </TutorialTarget>
         }
+        ListEmptyComponent={loading ? <LoadingState rows={3} /> : null}
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInDown.delay(index * 40).duration(320)} style={[styles.folder, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}>
             <View style={styles.folderHeader}>
@@ -176,7 +195,7 @@ export function VaultScreen() {
               <Text style={[styles.docMeta, { color: theme.colors.subtleText }]}>{draft?.mimeType ?? "Document"}</Text>
             </View>
           </View>
-          <Field label={t("vault.docTitle")} value={title} onChangeText={setTitle} />
+          <Field label={t("vault.docTitle")} value={title} onChangeText={setTitle} error={error === t("common.requiredField") ? error : undefined} />
           <View>
             <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("vault.folder")}</Text>
             <View style={styles.grid}>
@@ -185,6 +204,7 @@ export function VaultScreen() {
               ))}
             </View>
           </View>
+          <FormMessage message={error && error !== t("common.requiredField") ? error : undefined} />
           {uploading ? (
             <ActivityIndicator color={theme.colors.primary} style={styles.spinner} />
           ) : (

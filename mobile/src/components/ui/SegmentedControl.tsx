@@ -40,8 +40,8 @@ export function SegmentedControl<T extends string>({ segments, value, onChange }
       {segments.map((segment) => {
         const active = segment.value === value;
         return (
-          <Pressable key={segment.value} style={styles.segment} onPress={() => onChange(segment.value)}>
-            <Text style={[styles.label, { color: active ? theme.colors.text : theme.colors.muted }]} numberOfLines={1}>
+          <Pressable key={segment.value} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={segment.label} style={styles.segment} onPress={() => onChange(segment.value)}>
+            <Text adjustsFontSizeToFit style={[styles.label, { color: active ? theme.colors.text : theme.colors.muted }]} numberOfLines={1}>
               {segment.label}
             </Text>
           </Pressable>
@@ -66,11 +66,14 @@ const styles = StyleSheet.create({
   segment: {
     flex: 1,
     minHeight: 38,
+    minWidth: 0,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    paddingHorizontal: 4
   },
   label: {
     fontSize: 14,
-    fontWeight: "800"
+    fontWeight: "800",
+    maxWidth: "100%"
   }
 });

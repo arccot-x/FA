@@ -4,11 +4,12 @@ import { Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
-import { Button, Chip, IconButton, PressableScale, SegmentedControl } from "../components/ui";
+import { Button, Chip, FormMessage, IconButton, PressableScale, SegmentedControl } from "../components/ui";
 import { expenseCategoryOptions } from "../constants/options";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
+import { useToast } from "../utils/ToastProvider";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { CURRENCIES } from "../utils/money";
 import type { ExpenseCategory, TransactionScope, TransactionType } from "../types";
@@ -30,6 +31,7 @@ const quickCategories = QUICK_VALUES.map((value) => expenseCategoryOptions.find(
 export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSubmit }: QuickAddModalProps) {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { currency } = useCurrency();
   const symbol = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "$";
 
@@ -39,23 +41,34 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
   const [scope, setScope] = useState<TransactionScope>("PERSONAL");
   const [entryType, setEntryType] = useState<TransactionType>("EXPENSE");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | undefined>();
   const isIncome = entryType === "INCOME";
 
   const pickFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!result.canceled && result.assets[0]) {
-      onAttachImage(result.assets[0].uri);
+    setError(undefined);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+      if (!result.canceled && result.assets[0]) {
+        onAttachImage(result.assets[0].uri);
+      }
+    } catch {
+      setError(t("common.uploadFailed"));
     }
   };
 
   const append = (value: string) => {
+    setError(undefined);
     if (value === "." && amount.includes(".")) return;
     setAmount((current) => `${current}${value}`.replace(/^0+(?=\d)/, ""));
   };
 
   const submit = async () => {
     const parsed = Number(amount);
-    if (!parsed) return;
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setError(t("common.positiveAmount"));
+      return;
+    }
+    setError(undefined);
     setSaving(true);
     try {
       await onSubmit(parsed, category, !isIncome && inFamily ? scope : "PERSONAL", entryType);
@@ -64,6 +77,9 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
       setScope("PERSONAL");
       setEntryType("EXPENSE");
       onClose();
+      showToast(t("common.saved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -141,6 +157,7 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
           ))}
         </View>
 
+        <FormMessage message={error} />
         <Button label={isIncome ? t("quickAdd.addIncome") : t("quickAdd.saveExpense")} icon="check" onPress={submit} loading={saving} style={styles.save} />
       </SafeAreaView>
     </Modal>

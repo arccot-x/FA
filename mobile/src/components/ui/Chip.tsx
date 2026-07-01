@@ -20,6 +20,9 @@ export function Chip({ label, icon, selected, onPress, basis = "31%" }: ChipProp
   return (
     <PressableScale
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
       style={[
         styles.chip,
         {
@@ -33,7 +36,7 @@ export function Chip({ label, icon, selected, onPress, basis = "31%" }: ChipProp
     >
       {icon ? <MaterialCommunityIcons color={selected ? theme.colors.onPrimary : theme.colors.primary} name={icon} size={22} /> : null}
       {label ? (
-        <Text style={[styles.label, { color: selected ? theme.colors.onPrimary : theme.colors.text }]} numberOfLines={1}>
+        <Text adjustsFontSizeToFit style={[styles.label, { color: selected ? theme.colors.onPrimary : theme.colors.text }]} numberOfLines={1}>
           {label}
         </Text>
       ) : null}
@@ -47,11 +50,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 4,
     justifyContent: "center",
+    minWidth: 0,
     paddingHorizontal: 4
   },
   label: {
     fontSize: 11.5,
     fontWeight: "800",
+    maxWidth: "100%",
     textAlign: "center"
   }
 });

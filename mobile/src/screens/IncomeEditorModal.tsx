@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
-import { ModalSheet, Field, Button, Chip } from "../components/ui";
+import { ModalSheet, Field, Button, Chip, FormMessage } from "../components/ui";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
 import { useFinanceStore } from "../store/useFinanceStore";
+import { useToast } from "../utils/ToastProvider";
 
 type IncomeEditorModalProps = {
   visible: boolean;
@@ -35,6 +36,7 @@ export function IncomeEditorModal({
 }: IncomeEditorModalProps) {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const money = useMoney();
   const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
 
@@ -45,6 +47,7 @@ export function IncomeEditorModal({
   const [received, setReceived] = useState(currentActual > 0);
   const [houseAllocation, setHouseAllocation] = useState(String(currentHouseAllocation || ""));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
   // Re-seed fields when the modal opens with fresh data.
   useEffect(() => {
@@ -55,20 +58,40 @@ export function IncomeEditorModal({
       setVariable(variableIncomeEnabled);
       setReceived(currentActual > 0);
       setHouseAllocation(String(currentHouseAllocation || ""));
+      setError(undefined);
     }
   }, [visible, userIncome, currentExpected, currentActual, currentHouseAllocation, paydayDay, variableIncomeEnabled]);
 
   const save = async () => {
-    const parsedIncome = Math.max(0, Number(income) || 0);
-    const parsedExpected = variable ? Math.max(0, Number(expected) || parsedIncome) : parsedIncome;
-    const parsedPayday = Math.min(31, Math.max(1, Math.round(Number(payday) || 1)));
+    const parsedIncomeRaw = Number(income);
+    const parsedExpectedRaw = Number(expected);
+    const parsedPaydayRaw = Number(payday);
+    if (!Number.isFinite(parsedIncomeRaw) || parsedIncomeRaw <= 0) {
+      setError(t("common.positiveAmount"));
+      return;
+    }
+    if (variable && (!Number.isFinite(parsedExpectedRaw) || parsedExpectedRaw <= 0)) {
+      setError(t("common.validAmount"));
+      return;
+    }
+    if (!Number.isFinite(parsedPaydayRaw) || parsedPaydayRaw < 1 || parsedPaydayRaw > 31) {
+      setError(t("common.validDay"));
+      return;
+    }
+    const parsedIncome = parsedIncomeRaw;
+    const parsedExpected = variable ? parsedExpectedRaw : parsedIncome;
+    const parsedPayday = Math.round(parsedPaydayRaw);
     const parsedHouse = inFamily ? Math.min(parsedExpected, Math.max(0, Number(houseAllocation) || 0)) : 0;
+    setError(undefined);
     setSaving(true);
     try {
       await onSaveSettings({ defaultMonthlyIncome: parsedIncome, paydayDay: parsedPayday, variableIncomeEnabled: variable });
       // Mark the cycle as received (actual = expected) or clear it (0); set house split.
       await onSaveExpected(parsedExpected, received ? parsedExpected : 0, parsedHouse);
       onClose();
+      showToast(t("common.saved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -77,7 +100,7 @@ export function IncomeEditorModal({
   return (
     <ModalSheet visible={visible} title={t("income.title")} onClose={onClose}>
       <View style={styles.form}>
-        <Field label={t("income.monthlyIncome")} keyboardType="decimal-pad" value={income} onChangeText={setIncome} />
+        <Field label={t("income.monthlyIncome")} keyboardType="decimal-pad" value={income} onChangeText={setIncome} error={error === t("common.positiveAmount") ? error : undefined} />
 
         <View style={styles.presets}>
           {PRESETS.map((preset) => (
@@ -85,7 +108,7 @@ export function IncomeEditorModal({
           ))}
         </View>
 
-        <Field label={t("income.payday")} keyboardType="number-pad" value={payday} onChangeText={setPayday} />
+        <Field label={t("income.payday")} keyboardType="number-pad" value={payday} onChangeText={setPayday} error={error === t("common.validDay") ? error : undefined} />
 
         <View style={[styles.switchRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
           <View style={styles.switchText}>
@@ -95,7 +118,7 @@ export function IncomeEditorModal({
           <Switch value={variable} onValueChange={setVariable} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
         </View>
 
-        {variable ? <Field label={t("income.expectedThisMonth")} keyboardType="decimal-pad" value={expected} onChangeText={setExpected} /> : null}
+        {variable ? <Field label={t("income.expectedThisMonth")} keyboardType="decimal-pad" value={expected} onChangeText={setExpected} error={error === t("common.validAmount") ? error : undefined} /> : null}
 
         {inFamily ? (
           <View>
@@ -112,6 +135,7 @@ export function IncomeEditorModal({
           <Switch value={received} onValueChange={setReceived} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
         </View>
 
+        <FormMessage message={error && ![t("common.positiveAmount"), t("common.validAmount"), t("common.validDay")].includes(error) ? error : undefined} />
         <Button label={t("income.save")} icon="content-save" onPress={save} loading={saving} style={styles.saveButton} />
       </View>
     </ModalSheet>

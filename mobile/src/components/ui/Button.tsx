@@ -17,9 +17,10 @@ type ButtonProps = {
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
 };
 
-export function Button({ label, onPress, variant = "primary", icon, loading, disabled, style }: ButtonProps) {
+export function Button({ label, onPress, variant = "primary", icon, loading, disabled, style, accessibilityLabel }: ButtonProps) {
   const theme = useTheme();
 
   const palette: Record<Variant, { bg: string; fg: string; border: string }> = {
@@ -35,6 +36,7 @@ export function Button({ label, onPress, variant = "primary", icon, loading, dis
   return (
     <PressableScale
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
       disabled={isDisabled}
       onPress={() => {
         tapLight();
@@ -57,7 +59,9 @@ export function Button({ label, onPress, variant = "primary", icon, loading, dis
       ) : (
         <View style={styles.row}>
           {icon ? <MaterialCommunityIcons color={tones.fg} name={icon} size={20} /> : null}
-          <Text style={[styles.label, { color: tones.fg }]}>{label}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.label, { color: tones.fg }]}>
+            {label}
+          </Text>
         </View>
       )}
     </PressableScale>
@@ -74,9 +78,14 @@ const styles = StyleSheet.create({
   row: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8
+    gap: 8,
+    justifyContent: "center",
+    maxWidth: "100%",
+    minWidth: 0,
+    paddingHorizontal: 4
   },
   label: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: "800"
   }

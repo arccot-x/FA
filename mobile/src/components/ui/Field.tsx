@@ -6,10 +6,11 @@ import { useI18n } from "../../i18n";
 
 type FieldProps = TextInputProps & {
   label?: string;
+  error?: string;
   containerStyle?: object;
 };
 
-export const Field = forwardRef<TextInput, FieldProps>(({ label, containerStyle, style, ...rest }, ref) => {
+export const Field = forwardRef<TextInput, FieldProps>(({ label, error, containerStyle, style, ...rest }, ref) => {
   const theme = useTheme();
   const { isRTL } = useI18n();
 
@@ -25,7 +26,7 @@ export const Field = forwardRef<TextInput, FieldProps>(({ label, containerStyle,
           styles.input,
           {
             backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.border,
+            borderColor: error ? theme.colors.danger : theme.colors.border,
             borderRadius: theme.radii.md,
             color: theme.colors.text,
             textAlign: isRTL ? "right" : "left"
@@ -34,6 +35,7 @@ export const Field = forwardRef<TextInput, FieldProps>(({ label, containerStyle,
         ]}
         {...rest}
       />
+      {error ? <Text style={[styles.error, { color: theme.colors.danger, textAlign: isRTL ? "right" : "left" }]}>{error}</Text> : null}
     </View>
   );
 });
@@ -56,5 +58,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     minHeight: 54,
     paddingHorizontal: 16
+  },
+  error: {
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 16
   }
 });

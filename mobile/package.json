@@ -12,6 +12,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "~14.0.4",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/material-top-tabs": "^6.6.14",
@@ -32,6 +33,7 @@
     "expo-status-bar": "~2.0.0",
     "expo-system-ui": "~4.0.9",
     "react": "18.3.1",
+    "react-dom": "18.3.1",
     "react-native": "0.76.9",
     "react-native-chart-kit": "^6.12.0",
     "react-native-gesture-handler": "~2.20.0",
@@ -41,6 +43,7 @@
     "react-native-screens": "~4.4.0",
     "react-native-svg": "15.8.0",
     "react-native-tab-view": "^3.5.2",
+    "react-native-web": "~0.19.13",
     "zustand": "^5.0.1"
   },
   "devDependencies": {

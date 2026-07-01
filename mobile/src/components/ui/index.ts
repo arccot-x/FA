@@ -7,6 +7,8 @@ export { SegmentedControl } from "./SegmentedControl";
 export { AnimatedNumber } from "./AnimatedNumber";
 export { Chip } from "./Chip";
 export { Field } from "./Field";
+export { FormMessage } from "./FormMessage";
+export { LoadingState } from "./LoadingState";
 export { EmptyState } from "./EmptyState";
 export { ModalSheet } from "./ModalSheet";
 export { Gradient } from "./Gradient";

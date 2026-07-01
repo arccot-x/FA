@@ -37,6 +37,7 @@ import { RemindersProvider } from "./src/utils/RemindersProvider";
 import { AppLockProvider } from "./src/utils/AppLockProvider";
 import { SubscriptionProvider, useSubscription } from "./src/utils/SubscriptionProvider";
 import { AiProvider } from "./src/utils/AiProvider";
+import { ToastProvider } from "./src/utils/ToastProvider";
 import { getPref, PREF_KEYS, setPref } from "./src/utils/prefs";
 import { TutorialProvider } from "./src/utils/TutorialProvider";
 import { navigationRef } from "./src/utils/navigation";
@@ -183,7 +184,9 @@ export default function App() {
                     <AppLockProvider>
                       <SubscriptionProvider>
                         <AiProvider>
-                          <Root />
+                          <ToastProvider>
+                            <Root />
+                          </ToastProvider>
                         </AiProvider>
                       </SubscriptionProvider>
                     </AppLockProvider>

@@ -3,14 +3,16 @@ import { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Button, Field, SegmentedControl } from "../components/ui";
+import { Button, Field, FormMessage, SegmentedControl } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
+import { useToast } from "../utils/ToastProvider";
 
 export function AuthScreen() {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [mode, setMode] = useState<"login" | "register" | "reset">("login");
   const [resetStep, setResetStep] = useState<"email" | "code">("email");
   const [name, setName] = useState("");
@@ -19,7 +21,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>();
-  const { login, register, requestPasswordReset, resetPassword, loading, authError } = useFinanceStore();
+  const { login, loginDemo, register, requestPasswordReset, resetPassword, loading, authError } = useFinanceStore();
 
   const canSubmit = useMemo(() => {
     const hasCredentials = email.trim().length > 4 && password.length >= 8;
@@ -54,6 +56,16 @@ export function AuthScreen() {
     }
   };
 
+  const tryDemo = async () => {
+    setLocalError(undefined);
+    try {
+      await loginDemo();
+      showToast(t("common.saved"), "success");
+    } catch {
+      // Store keeps the user-facing backend error.
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
@@ -80,12 +92,12 @@ export function AuthScreen() {
               }}
             />
 
-            {mode === "register" ? <Field label={t("auth.name")} autoCapitalize="words" autoComplete="name" value={name} onChangeText={setName} /> : null}
+            {mode === "register" ? <Field label={t("auth.name")} autoCapitalize="words" autoComplete="name" value={name} onChangeText={setName} error={localError && name.trim().length < 2 ? t("common.requiredField") : undefined} /> : null}
 
-            <Field label={t("auth.email")} autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} />
+            <Field label={t("auth.email")} autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} error={localError && email.trim().length <= 4 ? t("common.validEmail") : undefined} />
 
             {mode === "reset" && resetStep === "code" ? (
-              <Field label={t("auth.resetCode")} autoCapitalize="none" keyboardType="number-pad" value={code} onChangeText={setCode} />
+              <Field label={t("auth.resetCode")} autoCapitalize="none" keyboardType="number-pad" value={code} onChangeText={setCode} error={localError && code.trim().length < 6 ? t("common.requiredField") : undefined} />
             ) : null}
 
             {mode === "reset" && resetStep === "email" ? null : (
@@ -97,6 +109,7 @@ export function AuthScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
+                error={localError && password.length < 8 ? t("auth.invalidLogin") : undefined}
                 style={styles.passwordInput}
               />
               <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((current) => !current)}>
@@ -105,7 +118,7 @@ export function AuthScreen() {
             </View>
             )}
 
-            {localError || authError ? <Text style={[styles.error, { color: theme.colors.danger }]}>{localError ?? authError}</Text> : null}
+            <FormMessage message={localError || authError ? localError ?? authError : undefined} />
 
             {mode === "login" ? (
               <TouchableOpacity onPress={() => setMode("reset")} style={styles.linkButton}>
@@ -131,6 +144,7 @@ export function AuthScreen() {
               loading={loading}
               style={styles.submit}
             />
+            {mode === "login" ? <Button label={t("auth.demo")} icon="play-circle-outline" variant="secondary" onPress={() => void tryDemo()} disabled={loading} /> : null}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -142,6 +156,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   flex: { flex: 1 },
   scroll: {
+    alignItems: "center",
     flexGrow: 1,
     justifyContent: "center",
     padding: 24
@@ -166,11 +181,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     lineHeight: 21,
+    maxWidth: 420,
     marginTop: 8,
     textAlign: "center"
   },
   form: {
-    gap: 16
+    gap: 16,
+    maxWidth: 430,
+    width: "100%"
   },
   passwordInput: {
     paddingRight: 52
@@ -183,10 +201,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     width: 52
-  },
-  error: {
-    fontSize: 13,
-    fontWeight: "700"
   },
   linkButton: {
     alignSelf: "flex-start"

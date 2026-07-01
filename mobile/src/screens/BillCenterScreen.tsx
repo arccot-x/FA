@@ -5,19 +5,21 @@ import { Alert, FlatList, Modal, RefreshControl, ScrollView, StyleSheet, Text, V
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
 import { Screen } from "../components/Screen";
-import { Button, Chip, Field, IconButton, ModalSheet, PressableScale, SegmentedControl } from "../components/ui";
+import { Button, Chip, Field, FormMessage, IconButton, LoadingState, ModalSheet, PressableScale, SegmentedControl } from "../components/ui";
 import { billIconOptions, expenseCategoryOptions } from "../constants/options";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { useI18n } from "../i18n";
 import { useMoney } from "../utils/CurrencyProvider";
 import { TutorialTarget } from "../utils/TutorialProvider";
+import { useToast } from "../utils/ToastProvider";
 import type { BillOccurrence, ExpenseCategory, TransactionScope } from "../types";
 import { toNumber } from "../utils/money";
 
 export function BillCenterScreen() {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const money = useMoney();
   const { bills, load, loading, markBill, editBill, addBill, deleteBill } = useFinanceStore();
   const listRef = useRef<FlatList<BillOccurrence>>(null);
@@ -29,6 +31,8 @@ export function BillCenterScreen() {
   const [category, setCategory] = useState<ExpenseCategory>("UTILITIES");
   const [icon, setIcon] = useState("receipt");
   const [applyForever, setApplyForever] = useState(false);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorError, setEditorError] = useState<string | undefined>();
 
   useFocusEffect(
     useCallback(() => {
@@ -44,15 +48,36 @@ export function BillCenterScreen() {
     setCategory(bill.billTemplate.category);
     setIcon(bill.billTemplate.icon);
     setApplyForever(false);
+    setEditorError(undefined);
   };
 
   const saveBill = async () => {
     if (!editing) return;
     const nextAmount = Number(amount);
-    const nextDueDay = Math.min(31, Math.max(1, Math.round(Number(dueDay) || 1)));
-    if (!name.trim() || !Number.isFinite(nextAmount) || nextAmount < 0) return;
-    await editBill(editing, { name: name.trim(), amount: nextAmount, dueDay: nextDueDay, category, icon, forever: applyForever });
-    setEditing(null);
+    const rawDueDay = Number(dueDay);
+    if (!name.trim()) {
+      setEditorError(t("common.requiredField"));
+      return;
+    }
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      setEditorError(t("common.positiveAmount"));
+      return;
+    }
+    if (!Number.isFinite(rawDueDay) || rawDueDay < 1 || rawDueDay > 31) {
+      setEditorError(t("common.validDay"));
+      return;
+    }
+    setEditorError(undefined);
+    setEditorSaving(true);
+    try {
+      await editBill(editing, { name: name.trim(), amount: nextAmount, dueDay: Math.round(rawDueDay), category, icon, forever: applyForever });
+      setEditing(null);
+      showToast(t("common.saved"));
+    } catch (e) {
+      setEditorError(e instanceof Error ? e.message : t("common.saveFailed"));
+    } finally {
+      setEditorSaving(false);
+    }
   };
 
   const setBillStatus = async (status: "UNPAID" | "PAID" | "SKIPPED") => {
@@ -60,6 +85,7 @@ export function BillCenterScreen() {
     const bill = editing;
     setEditing(null);
     await markBill(bill, status);
+    showToast(t("common.updated"));
   };
 
   const confirmDelete = () => {
@@ -72,7 +98,7 @@ export function BillCenterScreen() {
         style: "destructive",
         onPress: () => {
           setEditing(null);
-          void deleteBill(bill);
+          void deleteBill(bill).then(() => showToast(t("common.deleted")));
         }
       }
     ]);
@@ -96,7 +122,13 @@ export function BillCenterScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         ListHeaderComponent={
           <Animated.View entering={FadeInDown.duration(400)}>
-            <TutorialTarget id="bills.primary" prepare={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+            <TutorialTarget
+              id="bills.primary"
+              prepare={() => {
+                listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                return new Promise<void>((resolve) => setTimeout(resolve, 360));
+              }}
+            >
               <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.xl, ...theme.shadow("sm") }]}>
                 <View>
                   <Text style={[styles.summaryLabel, { color: theme.colors.subtleText }]}>{t("bills.remaining")}</Text>
@@ -121,7 +153,7 @@ export function BillCenterScreen() {
             </>
           );
         }}
-        ListEmptyComponent={<Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("bills.empty")}</Text>}
+        ListEmptyComponent={loading ? <LoadingState rows={3} /> : <Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("bills.empty")}</Text>}
       />
 
       <Modal transparent animationType="fade" visible={editing !== null} onRequestClose={() => setEditing(null)} statusBarTranslucent>
@@ -131,9 +163,9 @@ export function BillCenterScreen() {
               <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
               <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
               <View style={styles.editorForm}>
-                <Field label={t("bills.billName")} autoFocus value={name} onChangeText={setName} />
-                <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-                <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} />
+                <Field label={t("bills.billName")} autoFocus value={name} onChangeText={setName} error={editorError === t("common.requiredField") ? editorError : undefined} />
+                <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} error={editorError === t("common.positiveAmount") ? editorError : undefined} />
+                <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} error={editorError === t("common.validDay") ? editorError : undefined} />
                 <View>
                   <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
                   <View style={styles.grid}>
@@ -169,8 +201,9 @@ export function BillCenterScreen() {
               </PressableScale>
               <View style={styles.editorActions}>
                 <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
-                <Button label={t("common.save")} onPress={saveBill} style={styles.editorButton} />
+                <Button label={t("common.save")} onPress={saveBill} loading={editorSaving} style={styles.editorButton} />
               </View>
+              <FormMessage message={editorError && ![t("common.requiredField"), t("common.positiveAmount"), t("common.validDay")].includes(editorError) ? editorError : undefined} />
               <View style={styles.editorStatusActions}>
                 <Button label={t("bills.skip")} icon="pause-circle-outline" variant="secondary" onPress={() => void setBillStatus("SKIPPED")} />
                 <Button label={t("bills.reset")} icon="restore" variant="secondary" onPress={() => void setBillStatus("UNPAID")} />
@@ -206,6 +239,7 @@ type AddBillInput = {
 function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClose: () => void; onSubmit: (input: AddBillInput) => Promise<void> }) {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const inFamily = useFinanceStore((state) => !!state.family?.subscription?.allowed);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -214,20 +248,36 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
   const [icon, setIcon] = useState("receipt");
   const [scope, setScope] = useState<TransactionScope>("PERSONAL");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
   const save = async () => {
     const parsedAmount = Number(amount);
-    const parsedDay = Math.min(31, Math.max(1, Math.round(Number(dueDay) || 1)));
-    if (!name.trim() || !parsedAmount) return;
+    const parsedDay = Number(dueDay);
+    if (!name.trim()) {
+      setError(t("common.requiredField"));
+      return;
+    }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError(t("common.positiveAmount"));
+      return;
+    }
+    if (!Number.isFinite(parsedDay) || parsedDay < 1 || parsedDay > 31) {
+      setError(t("common.validDay"));
+      return;
+    }
+    setError(undefined);
     setSaving(true);
     try {
-      await onSubmit({ name: name.trim(), defaultAmount: parsedAmount, dueDay: parsedDay, category, icon, scope: inFamily ? scope : "PERSONAL" });
+      await onSubmit({ name: name.trim(), defaultAmount: parsedAmount, dueDay: Math.round(parsedDay), category, icon, scope: inFamily ? scope : "PERSONAL" });
       setName("");
       setAmount("");
       setDueDay("1");
       setCategory("UTILITIES");
       setIcon("receipt");
       setScope("PERSONAL");
+      showToast(t("common.saved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -236,9 +286,9 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
   return (
     <ModalSheet visible={visible} title={t("bills.newBill")} onClose={onClose}>
       <View style={styles.form}>
-        <Field label={t("bills.billName")} placeholder={t("bills.billNamePlaceholder")} value={name} onChangeText={setName} />
-        <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-        <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} />
+        <Field label={t("bills.billName")} placeholder={t("bills.billNamePlaceholder")} value={name} onChangeText={setName} error={error === t("common.requiredField") ? error : undefined} />
+        <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} error={error === t("common.positiveAmount") ? error : undefined} />
+        <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} error={error === t("common.validDay") ? error : undefined} />
         {inFamily ? (
           <SegmentedControl
             segments={[
@@ -265,6 +315,7 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
             ))}
           </View>
         </View>
+        <FormMessage message={error && ![t("common.requiredField"), t("common.positiveAmount"), t("common.validDay")].includes(error) ? error : undefined} />
         <Button label={t("bills.createBill")} icon="plus" onPress={save} loading={saving} style={styles.save} />
       </View>
     </ModalSheet>

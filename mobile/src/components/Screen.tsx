@@ -20,7 +20,7 @@ export function Screen({ title, subtitle, children, action }: ScreenProps) {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={["top"]}>
       <Animated.View entering={FadeInDown.duration(360)} style={[styles.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
         <View style={styles.titleBlock}>
-          <Text style={[styles.title, { color: theme.colors.text, textAlign: isRTL ? "right" : "left" }]}>{title}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.title, { color: theme.colors.text, textAlign: isRTL ? "right" : "left" }]}>{title}</Text>
           {subtitle ? (
             <Text style={[styles.subtitle, { color: theme.colors.subtleText, textAlign: isRTL ? "right" : "left" }]}>{subtitle}</Text>
           ) : null}

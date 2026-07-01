@@ -22,6 +22,8 @@ type FinanceState = {
   pendingSyncCount: number;
   syncing: boolean;
   authError?: string;
+  loadError?: string;
+  lastSyncedAt?: string;
   selectedMonth: string;
   setMonth: (month: string) => Promise<void>;
   family?: Family | null;
@@ -37,6 +39,7 @@ type FinanceState = {
   restoreSession: () => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<void>;
+  loginDemo: () => Promise<void>;
   requestPasswordReset: (input: { email: string }) => Promise<void>;
   resetPassword: (input: { email: string; code: string; newPassword: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -68,6 +71,7 @@ type FinanceState = {
 const tokenKey = "frictionless-finance-token";
 const emptyBills: BillsState = { unpaid: [], settled: [] };
 const emptyHouse: HouseData = { pool: 0, spent: 0, billsDue: 0, balance: 0, transactions: [] };
+const secureStoreTimeoutMs = 2500;
 
 function requireUser(user?: User) {
   if (!user) {
@@ -79,12 +83,32 @@ function requireUser(user?: User) {
 
 async function storeSession(token: string) {
   api.setAuthToken(token);
-  await SecureStore.setItemAsync(tokenKey, token);
+  await withTimeout(SecureStore.setItemAsync(tokenKey, token), secureStoreTimeoutMs).catch(() => {});
 }
 
 async function clearSession() {
   api.setAuthToken(undefined);
-  await SecureStore.deleteItemAsync(tokenKey);
+  await withTimeout(SecureStore.deleteItemAsync(tokenKey), secureStoreTimeoutMs).catch(() => {});
+}
+
+async function readSessionToken() {
+  return withTimeout(SecureStore.getItemAsync(tokenKey), secureStoreTimeoutMs).catch(() => null);
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Timed out")), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 function isLocalId(id: string) {
@@ -187,7 +211,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   restoreSession: async () => {
     set({ loading: true, authError: undefined });
     try {
-      const token = await SecureStore.getItemAsync(tokenKey);
+      const token = await readSessionToken();
       if (!token) {
         set({ authReady: true, loading: false });
         return;
@@ -251,6 +275,20 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }
   },
 
+  loginDemo: async () => {
+    set({ loading: true, authError: undefined });
+    try {
+      const { user, token } = await api.loginDemoAccount();
+      await storeSession(token);
+      set({ user, offline: false });
+      await get().load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not open demo account.";
+      set({ authError: message, loading: false });
+      throw error;
+    }
+  },
+
   logout: async () => {
     await clearSession();
     void clearCache("user");
@@ -294,12 +332,15 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         vaultDocuments: data.vaultDocuments,
         loading: false,
         offline: false,
+        loadError: undefined,
+        lastSyncedAt: new Date().toISOString(),
         pendingSyncCount: (await loadOfflineQueue()).length
       });
       void saveCache("user", data.user);
       void saveCache(`bootstrap-${month}`, { incomeCycle: data.incomeCycle, bills: data.bills, transactions: data.transactions, vaultDocuments: data.vaultDocuments });
       void get().loadFamily();
-    } catch {
+    } catch (error) {
+      const loadError = error instanceof Error ? error.message : "Could not refresh data.";
       // Offline: fall back to the last cached data for this month if we have it.
       const cached = await loadCache<CachedBootstrap>(`bootstrap-${month}`);
       if (cached) {
@@ -311,11 +352,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
           vaultDocuments: cached.vaultDocuments,
           loading: false,
           offline: true,
+          loadError,
           pendingSyncCount: pending.length
         });
       } else {
         const pending = await loadOfflineQueue();
-        set({ loading: false, offline: true, pendingSyncCount: pending.length });
+        set({ loading: false, offline: true, loadError, pendingSyncCount: pending.length });
       }
     }
   },

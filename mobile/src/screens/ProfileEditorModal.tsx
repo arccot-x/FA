@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Alert, Image, StyleSheet, Text, View } from "react-native";
-import { Button, Field, ModalSheet } from "../components/ui";
+import { Image, StyleSheet, Text, View } from "react-native";
+import { Button, Field, FormMessage, ModalSheet } from "../components/ui";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
+import { useToast } from "../utils/ToastProvider";
 import type { User } from "../types";
 
 type ProfileEditorModalProps = {
@@ -15,12 +16,14 @@ type ProfileEditorModalProps = {
 export function ProfileEditorModal({ visible, user, onClose, onSave }: ProfileEditorModalProps) {
   const { t } = useI18n();
   const theme = useTheme();
+  const { showToast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [householdRole, setHouseholdRole] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
   useEffect(() => {
     if (visible) {
@@ -29,22 +32,28 @@ export function ProfileEditorModal({ visible, user, onClose, onSave }: ProfileEd
       setPhoneNumber(user?.phoneNumber ?? "");
       setAvatarUrl(user?.avatarUrl ?? "");
       setHouseholdRole(user?.householdRole ?? "");
+      setError(undefined);
     }
   }, [visible, user]);
 
   const save = async () => {
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedName || !trimmedEmail.includes("@")) {
-      Alert.alert(t("profile.title"), t("profile.invalid"));
+    if (!trimmedName) {
+      setError(t("common.requiredField"));
+      return;
+    }
+    if (!trimmedEmail.includes("@")) {
+      setError(t("common.validEmail"));
       return;
     }
     const trimmedAvatar = avatarUrl.trim();
     if (trimmedAvatar && !/^https?:\/\//i.test(trimmedAvatar)) {
-      Alert.alert(t("profile.title"), t("profile.avatarInvalid"));
+      setError(t("common.validUrl"));
       return;
     }
 
+    setError(undefined);
     setSaving(true);
     try {
       await onSave({
@@ -55,8 +64,9 @@ export function ProfileEditorModal({ visible, user, onClose, onSave }: ProfileEd
         householdRole: householdRole.trim() || null
       });
       onClose();
+      showToast(t("common.saved"));
     } catch (error) {
-      Alert.alert(t("profile.title"), error instanceof Error ? error.message : t("profile.saveFailed"));
+      setError(error instanceof Error ? error.message : t("profile.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -78,11 +88,12 @@ export function ProfileEditorModal({ visible, user, onClose, onSave }: ProfileEd
             <Text style={[styles.previewMeta, { color: theme.colors.subtleText }]} numberOfLines={1}>{householdRole || t("profile.rolePlaceholder")}</Text>
           </View>
         </View>
-        <Field label={t("auth.name")} value={name} onChangeText={setName} autoCapitalize="words" />
-        <Field label={t("auth.email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+        <Field label={t("auth.name")} value={name} onChangeText={setName} autoCapitalize="words" error={error === t("common.requiredField") ? error : undefined} />
+        <Field label={t("auth.email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" error={error === t("common.validEmail") ? error : undefined} />
         <Field label={t("profile.phone")} value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
         <Field label={t("profile.role")} value={householdRole} onChangeText={setHouseholdRole} placeholder={t("profile.rolePlaceholder")} />
-        <Field label={t("profile.avatarUrl")} value={avatarUrl} onChangeText={setAvatarUrl} autoCapitalize="none" keyboardType="url" placeholder="https://..." />
+        <Field label={t("profile.avatarUrl")} value={avatarUrl} onChangeText={setAvatarUrl} autoCapitalize="none" keyboardType="url" placeholder="https://..." error={error === t("common.validUrl") ? error : undefined} />
+        <FormMessage message={error && ![t("common.requiredField"), t("common.validEmail"), t("common.validUrl")].includes(error) ? error : undefined} />
         <Button label={t("profile.save")} icon="account-check" loading={saving} onPress={() => void save()} />
       </View>
     </ModalSheet>

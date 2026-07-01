@@ -3,7 +3,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Button, Chip, Field } from "../components/ui";
+import { Button, Chip, Field, FormMessage } from "../components/ui";
 import { useFinanceStore } from "../store/useFinanceStore";
 import { useTheme } from "../theme";
 import { LOCALES, useI18n } from "../i18n";
@@ -11,27 +11,42 @@ import type { Locale } from "../i18n";
 import { useCurrency } from "../utils/CurrencyProvider";
 import { CURRENCIES } from "../utils/money";
 import type { CurrencyCode } from "../utils/money";
+import { useToast } from "../utils/ToastProvider";
 
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const theme = useTheme();
   const { t, locale, setLocale } = useI18n();
+  const { showToast } = useToast();
   const { currency, setCurrency } = useCurrency();
   const { user, saveIncomeSettings, saveExpectedIncome } = useFinanceStore();
 
   const [income, setIncome] = useState("");
   const [payday, setPayday] = useState("1");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
   const finish = async () => {
+    const parsedIncome = Number(income);
+    const parsedPayday = Number(payday);
+    if (!Number.isFinite(parsedIncome) || parsedIncome <= 0) {
+      setError(t("common.positiveAmount"));
+      return;
+    }
+    if (!Number.isFinite(parsedPayday) || parsedPayday < 1 || parsedPayday > 31) {
+      setError(t("common.validDay"));
+      return;
+    }
+    setError(undefined);
     setSaving(true);
     try {
-      const parsedIncome = Math.max(0, Number(income) || 0);
-      const parsedPayday = Math.min(31, Math.max(1, Math.round(Number(payday) || 1)));
       if (user) {
-        await saveIncomeSettings({ defaultMonthlyIncome: parsedIncome, paydayDay: parsedPayday, variableIncomeEnabled: false });
+        await saveIncomeSettings({ defaultMonthlyIncome: parsedIncome, paydayDay: Math.round(parsedPayday), variableIncomeEnabled: false });
         await saveExpectedIncome(parsedIncome);
       }
       onDone();
+      showToast(t("common.saved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -50,8 +65,8 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(100).duration(420)} style={styles.form}>
-            <Field label={t("onboarding.incomeStep")} keyboardType="decimal-pad" value={income} onChangeText={setIncome} />
-            <Field label={t("onboarding.paydayStep")} keyboardType="number-pad" value={payday} onChangeText={setPayday} />
+            <Field label={t("onboarding.incomeStep")} keyboardType="decimal-pad" value={income} onChangeText={setIncome} error={error === t("common.positiveAmount") ? error : undefined} />
+            <Field label={t("onboarding.paydayStep")} keyboardType="number-pad" value={payday} onChangeText={setPayday} error={error === t("common.validDay") ? error : undefined} />
 
             <Text style={[styles.label, { color: theme.colors.subtleText }]}>{t("settings.currency")}</Text>
             <View style={styles.row}>
@@ -67,7 +82,18 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
               ))}
             </View>
 
+            <FormMessage message={error && ![t("common.positiveAmount"), t("common.validDay")].includes(error) ? error : undefined} />
             <Button label={t("onboarding.start")} icon="arrow-right" onPress={finish} loading={saving} style={styles.start} />
+            <Button
+              label={t("onboarding.useSample")}
+              icon="creation"
+              variant="secondary"
+              onPress={() => {
+                setIncome("4200");
+                setPayday("1");
+                setError(undefined);
+              }}
+            />
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -78,12 +104,12 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  content: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  content: { alignItems: "center", flexGrow: 1, justifyContent: "center", padding: 24 },
   hero: { alignItems: "center", marginBottom: 28 },
   logo: { alignItems: "center", height: 64, justifyContent: "center", marginBottom: 16, width: 64 },
   title: { fontSize: 26, fontWeight: "900", textAlign: "center" },
-  subtitle: { fontSize: 15, fontWeight: "600", lineHeight: 21, marginTop: 8, textAlign: "center" },
-  form: { gap: 16 },
+  subtitle: { fontSize: 15, fontWeight: "600", lineHeight: 21, marginTop: 8, maxWidth: 420, textAlign: "center" },
+  form: { gap: 16, maxWidth: 430, width: "100%" },
   label: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   start: { marginTop: 8 }

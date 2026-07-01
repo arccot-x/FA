@@ -72,7 +72,15 @@ export function SettingsScreen() {
   const confirmDeleteAccount = () => {
     Alert.alert(t("account.deleteTitle"), t("account.deleteMessage"), [
       { text: t("common.cancel"), style: "cancel" },
-      { text: t("account.deleteConfirm"), style: "destructive", onPress: () => void deleteAccount() }
+      {
+        text: t("account.deleteConfirm"),
+        style: "destructive",
+        onPress: () =>
+          Alert.alert(t("account.deleteSecondTitle"), t("account.deleteSecondMessage"), [
+            { text: t("common.cancel"), style: "cancel" },
+            { text: t("account.deleteConfirm"), style: "destructive", onPress: () => void deleteAccount() }
+          ])
+      }
     ]);
   };
 
@@ -96,7 +104,13 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
       >
-        <TutorialTarget id="settings.tabs" prepare={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
+        <TutorialTarget
+          id="settings.tabs"
+          prepare={() => {
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+            return new Promise<void>((resolve) => setTimeout(resolve, 360));
+          }}
+        >
           <Animated.View entering={FadeInDown.duration(320)} style={styles.tabs}>
             <SettingsTabBar tabs={tabSegments} value={activeTab} onChange={setActiveTab} theme={theme} />
           </Animated.View>

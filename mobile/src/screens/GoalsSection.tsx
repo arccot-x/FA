@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { Button, Field, ModalSheet, ProgressRing } from "../components/ui";
+import { Button, Field, FormMessage, ModalSheet, ProgressRing } from "../components/ui";
 import { useGoals } from "../utils/GoalsProvider";
 import type { SavingsGoal } from "../utils/GoalsProvider";
 import { useMoney } from "../utils/CurrencyProvider";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
+import { useToast } from "../utils/ToastProvider";
 
 export function GoalsSection() {
   const theme = useTheme();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const money = useMoney();
   const { goals, upsertGoal, removeGoal } = useGoals();
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
@@ -58,6 +60,7 @@ export function GoalsSection() {
         onSave={(goal) => {
           upsertGoal(goal);
           setEditing(null);
+          showToast(t("common.saved"));
         }}
         onDelete={(id) => {
           Alert.alert(t("goals.deleteTitle"), "", [
@@ -68,6 +71,7 @@ export function GoalsSection() {
               onPress: () => {
                 removeGoal(id);
                 setEditing(null);
+                showToast(t("common.deleted"));
               }
             }
           ]);
@@ -82,6 +86,7 @@ function GoalEditor({ goal, onClose, onSave, onDelete }: { goal: SavingsGoal | n
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [saved, setSaved] = useState("");
+  const [error, setError] = useState<string | undefined>();
 
   // Seed fields whenever a (different) goal opens.
   useEffect(() => {
@@ -89,12 +94,28 @@ function GoalEditor({ goal, onClose, onSave, onDelete }: { goal: SavingsGoal | n
       setName(goal.name);
       setTarget(goal.target ? String(goal.target) : "");
       setSaved(goal.saved ? String(goal.saved) : "");
+      setError(undefined);
     }
   }, [goal]);
 
   const save = () => {
     if (!goal) return;
-    onSave({ id: goal.id, name: name.trim() || t("goals.title"), target: Math.max(0, Number(target) || 0), saved: Math.max(0, Number(saved) || 0) });
+    const parsedTarget = Number(target);
+    const parsedSaved = Number(saved || 0);
+    if (!name.trim()) {
+      setError(t("common.requiredField"));
+      return;
+    }
+    if (!Number.isFinite(parsedTarget) || parsedTarget <= 0) {
+      setError(t("common.positiveAmount"));
+      return;
+    }
+    if (!Number.isFinite(parsedSaved) || parsedSaved < 0) {
+      setError(t("common.validAmount"));
+      return;
+    }
+    setError(undefined);
+    onSave({ id: goal.id, name: name.trim(), target: parsedTarget, saved: parsedSaved });
   };
 
   const exists = goal !== null && goal.name !== "";
@@ -102,9 +123,10 @@ function GoalEditor({ goal, onClose, onSave, onDelete }: { goal: SavingsGoal | n
   return (
     <ModalSheet visible={goal !== null} title={t("goals.editTitle")} onClose={onClose}>
       <View style={styles.form}>
-        <Field label={t("goals.name")} placeholder={t("goals.namePlaceholder")} value={name} onChangeText={setName} />
-        <Field label={t("goals.target")} keyboardType="decimal-pad" value={target} onChangeText={setTarget} />
-        <Field label={t("goals.saved")} keyboardType="decimal-pad" value={saved} onChangeText={setSaved} />
+        <Field label={t("goals.name")} placeholder={t("goals.namePlaceholder")} value={name} onChangeText={setName} error={error === t("common.requiredField") ? error : undefined} />
+        <Field label={t("goals.target")} keyboardType="decimal-pad" value={target} onChangeText={setTarget} error={error === t("common.positiveAmount") ? error : undefined} />
+        <Field label={t("goals.saved")} keyboardType="decimal-pad" value={saved} onChangeText={setSaved} error={error === t("common.validAmount") ? error : undefined} />
+        <FormMessage message={error ? t("common.fixFields") : undefined} />
         <Button label={t("common.save")} icon="content-save" onPress={save} style={styles.formSave} />
         {exists ? <Button label={t("goals.delete")} icon="trash-can-outline" variant="danger" onPress={() => goal && onDelete(goal.id)} /> : null}
       </View>

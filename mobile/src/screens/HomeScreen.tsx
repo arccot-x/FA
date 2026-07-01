@@ -5,7 +5,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
-import { AnimatedNumber, Gradient, IconButton, ProgressRing, PressableScale, SegmentedControl } from "../components/ui";
+import { AnimatedNumber, FormMessage, Gradient, IconButton, LoadingState, ProgressRing, PressableScale, SegmentedControl } from "../components/ui";
 import { QuickAddModal } from "./QuickAddModal";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { PendingExpenseModal } from "./PendingExpenseModal";
@@ -36,7 +36,7 @@ export function HomeScreen() {
   const [view, setView] = useState<"personal" | "house">("personal");
   const listRef = useRef<FlatList<Transaction>>(null);
 
-  const { user, load, loading, offline, pendingSyncCount, syncing, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
+  const { user, load, loading, offline, loadError, lastSyncedAt, pendingSyncCount, syncing, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
 
   const inFamily = !!family?.subscription?.allowed;
@@ -135,7 +135,7 @@ export function HomeScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />}
         renderItem={renderTransaction}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={<Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("home.noActivity")}</Text>}
+        ListEmptyComponent={loading ? <LoadingState rows={3} /> : <Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("home.noActivity")}</Text>}
         ListHeaderComponent={
           <View style={styles.headerArea}>
             <View style={[styles.monthRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
@@ -173,6 +173,16 @@ export function HomeScreen() {
                 <Text style={[styles.syncText, { color: theme.colors.text }]}>
                   {syncing ? t("sync.syncing") : t("sync.pending", { count: pendingSyncCount })}
                 </Text>
+              </View>
+            ) : null}
+            {offline || loadError ? (
+              <View style={styles.statusStack}>
+                <FormMessage message={loadError ? t("sync.refreshFailed") : undefined} tone="info" />
+                {lastSyncedAt ? (
+                  <Text style={[styles.lastSynced, { color: theme.colors.subtleText }]}>
+                    {t("sync.lastSynced", { time: new Date(lastSyncedAt).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }) })}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -254,7 +264,14 @@ export function HomeScreen() {
         }
       />
 
-      <TutorialTarget id="home.quickAdd" style={styles.fabTarget} prepare={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+      <TutorialTarget
+        id="home.quickAdd"
+        style={styles.fabTarget}
+        prepare={() => {
+          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+          return new Promise<void>((resolve) => setTimeout(resolve, 360));
+        }}
+      >
         <PressableScale
           accessibilityLabel={t("home.quickAdd")}
           style={[styles.fab, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.pill, ...theme.shadow("lg") }]}
@@ -443,6 +460,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "800"
+  },
+  statusStack: {
+    gap: 6
+  },
+  lastSynced: {
+    fontSize: 12,
+    fontWeight: "700",
+    paddingHorizontal: 4
   },
   sectionTitle: {
     fontSize: 19,

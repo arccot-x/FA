@@ -106,7 +106,13 @@ export function AnalyticsScreen() {
           <MetricTile label={t("analytics.expenses")} value={money(analytics.expenses)} icon="trending-down" tone="accent" />
         </Animated.View>
 
-        <TutorialTarget id="analytics.flow" prepare={() => scrollRef.current?.scrollTo({ y: 70, animated: true })}>
+        <TutorialTarget
+          id="analytics.flow"
+          prepare={() => {
+            scrollRef.current?.scrollTo({ y: 70, animated: true });
+            return new Promise<void>((resolve) => setTimeout(resolve, 360));
+          }}
+        >
           <Animated.View
             entering={FadeInDown.delay(60).duration(380)}
             style={[styles.panel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
