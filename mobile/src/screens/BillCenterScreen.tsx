@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useRef, useState } from "react";
-import { Alert, FlatList, Modal, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BillRow } from "../components/BillRow";
 import { Screen } from "../components/Screen";
@@ -157,61 +157,98 @@ export function BillCenterScreen() {
       />
 
       <Modal transparent animationType="fade" visible={editing !== null} onRequestClose={() => setEditing(null)} statusBarTranslucent>
-        <View style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}>
-          <Animated.View entering={FadeInDown.duration(220)} style={[styles.editor, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
-              <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
-              <View style={styles.editorForm}>
-                <Field label={t("bills.billName")} autoFocus value={name} onChangeText={setName} error={editorError === t("common.requiredField") ? editorError : undefined} />
-                <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} error={editorError === t("common.positiveAmount") ? editorError : undefined} />
-                <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} error={editorError === t("common.validDay") ? editorError : undefined} />
-                <View>
-                  <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
-                  <View style={styles.grid}>
-                    {expenseCategoryOptions.map((item) => (
-                      <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
-                    ))}
-                  </View>
-                </View>
-                <View>
-                  <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("bills.icon")}</Text>
-                  <View style={styles.grid}>
-                    {billIconOptions.map((item) => (
-                      <Chip key={item} icon={item} selected={item === icon} onPress={() => setIcon(item)} basis="13%" />
-                    ))}
-                  </View>
-                </View>
-              </View>
-              <PressableScale
-                onPress={() => setApplyForever((value) => !value)}
-                style={[styles.foreverRow, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
+          <Pressable style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]} onPress={() => setEditing(null)}>
+            <Pressable style={styles.editorPressable} onPress={() => {}}>
+              <Animated.View
+                entering={FadeInDown.duration(220)}
+                pointerEvents={editorSaving ? "none" : "auto"}
+                style={[styles.editor, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl, opacity: editorSaving ? 0.6 : 1 }]}
               >
-                <MaterialCommunityIcons
-                  color={applyForever ? theme.colors.primary : theme.colors.muted}
-                  name={applyForever ? "checkbox-marked" : "checkbox-blank-outline"}
-                  size={24}
-                />
-                <View style={styles.foreverText}>
-                  <Text style={[styles.foreverTitle, { color: theme.colors.text }]}>{t("bills.applyForever")}</Text>
-                  <Text style={[styles.foreverHint, { color: theme.colors.subtleText }]}>
-                    {applyForever ? t("bills.applyForeverHint") : t("bills.thisMonthHint")}
-                  </Text>
-                </View>
-              </PressableScale>
-              <View style={styles.editorActions}>
-                <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
-                <Button label={t("common.save")} onPress={saveBill} loading={editorSaving} style={styles.editorButton} />
-              </View>
-              <FormMessage message={editorError && ![t("common.requiredField"), t("common.positiveAmount"), t("common.validDay")].includes(editorError) ? editorError : undefined} />
-              <View style={styles.editorStatusActions}>
-                <Button label={t("bills.skip")} icon="pause-circle-outline" variant="secondary" onPress={() => void setBillStatus("SKIPPED")} />
-                <Button label={t("bills.reset")} icon="restore" variant="secondary" onPress={() => void setBillStatus("UNPAID")} />
-              </View>
-              <Button label={t("bills.deleteBill")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} style={styles.editorDelete} />
-            </ScrollView>
-          </Animated.View>
-        </View>
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  <Text style={[styles.editorTitle, { color: theme.colors.text }]}>{t("bills.editThisMonth")}</Text>
+                  <Text style={[styles.editorLabel, { color: theme.colors.subtleText }]}>{editing?.billTemplate.name}</Text>
+                  <View style={styles.editorForm}>
+                    <Field
+                      label={t("bills.billName")}
+                      autoFocus
+                      value={name}
+                      onChangeText={setName}
+                      onBlur={() => {
+                        if (!name.trim()) setEditorError(t("common.requiredField"));
+                      }}
+                      error={editorError === t("common.requiredField") ? editorError : undefined}
+                    />
+                    <Field
+                      label={t("common.amount")}
+                      keyboardType="decimal-pad"
+                      value={amount}
+                      onChangeText={setAmount}
+                      onBlur={() => {
+                        const parsed = Number(amount);
+                        if (amount && (!Number.isFinite(parsed) || parsed <= 0)) setEditorError(t("common.positiveAmount"));
+                      }}
+                      error={editorError === t("common.positiveAmount") ? editorError : undefined}
+                    />
+                    <Field
+                      label={t("bills.dueDay")}
+                      keyboardType="number-pad"
+                      value={dueDay}
+                      onChangeText={setDueDay}
+                      onBlur={() => {
+                        const parsed = Number(dueDay);
+                        if (dueDay && (!Number.isFinite(parsed) || parsed < 1 || parsed > 31)) setEditorError(t("common.validDay"));
+                      }}
+                      error={editorError === t("common.validDay") ? editorError : undefined}
+                    />
+                    <View>
+                      <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
+                      <View style={styles.grid}>
+                        {expenseCategoryOptions.map((item) => (
+                          <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
+                        ))}
+                      </View>
+                    </View>
+                    <View>
+                      <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("bills.icon")}</Text>
+                      <View style={styles.grid}>
+                        {billIconOptions.map((item) => (
+                          <Chip key={item} icon={item} selected={item === icon} onPress={() => setIcon(item)} basis="13%" />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                  <PressableScale
+                    onPress={() => setApplyForever((value) => !value)}
+                    style={[styles.foreverRow, { borderColor: theme.colors.border, borderRadius: theme.radii.md }]}
+                  >
+                    <MaterialCommunityIcons
+                      color={applyForever ? theme.colors.primary : theme.colors.muted}
+                      name={applyForever ? "checkbox-marked" : "checkbox-blank-outline"}
+                      size={24}
+                    />
+                    <View style={styles.foreverText}>
+                      <Text style={[styles.foreverTitle, { color: theme.colors.text }]}>{t("bills.applyForever")}</Text>
+                      <Text style={[styles.foreverHint, { color: theme.colors.subtleText }]}>
+                        {applyForever ? t("bills.applyForeverHint") : t("bills.thisMonthHint")}
+                      </Text>
+                    </View>
+                  </PressableScale>
+                  <View style={styles.editorActions}>
+                    <Button label={t("common.cancel")} variant="secondary" onPress={() => setEditing(null)} style={styles.editorButton} />
+                    <Button label={t("common.save")} onPress={saveBill} loading={editorSaving} style={styles.editorButton} />
+                  </View>
+                  <FormMessage message={editorError && ![t("common.requiredField"), t("common.positiveAmount"), t("common.validDay")].includes(editorError) ? editorError : undefined} />
+                  <View style={styles.editorStatusActions}>
+                    <Button label={t("bills.skip")} icon="pause-circle-outline" variant="secondary" onPress={() => void setBillStatus("SKIPPED")} />
+                    <Button label={t("bills.reset")} icon="restore" variant="secondary" onPress={() => void setBillStatus("UNPAID")} />
+                  </View>
+                  <Button label={t("bills.deleteBill")} icon="trash-can-outline" variant="danger" onPress={confirmDelete} style={styles.editorDelete} />
+                </ScrollView>
+              </Animated.View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <AddBillModal
@@ -285,10 +322,39 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
 
   return (
     <ModalSheet visible={visible} title={t("bills.newBill")} onClose={onClose}>
-      <View style={styles.form}>
-        <Field label={t("bills.billName")} placeholder={t("bills.billNamePlaceholder")} value={name} onChangeText={setName} error={error === t("common.requiredField") ? error : undefined} />
-        <Field label={t("common.amount")} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} error={error === t("common.positiveAmount") ? error : undefined} />
-        <Field label={t("bills.dueDay")} keyboardType="number-pad" value={dueDay} onChangeText={setDueDay} error={error === t("common.validDay") ? error : undefined} />
+      <View pointerEvents={saving ? "none" : "auto"} style={[styles.form, saving && styles.formDisabled]}>
+        <Field
+          label={t("bills.billName")}
+          placeholder={t("bills.billNamePlaceholder")}
+          value={name}
+          onChangeText={setName}
+          onBlur={() => {
+            if (!name.trim()) setError(t("common.requiredField"));
+          }}
+          error={error === t("common.requiredField") ? error : undefined}
+        />
+        <Field
+          label={t("common.amount")}
+          keyboardType="decimal-pad"
+          value={amount}
+          onChangeText={setAmount}
+          onBlur={() => {
+            const parsed = Number(amount);
+            if (amount && (!Number.isFinite(parsed) || parsed <= 0)) setError(t("common.positiveAmount"));
+          }}
+          error={error === t("common.positiveAmount") ? error : undefined}
+        />
+        <Field
+          label={t("bills.dueDay")}
+          keyboardType="number-pad"
+          value={dueDay}
+          onChangeText={setDueDay}
+          onBlur={() => {
+            const parsed = Number(dueDay);
+            if (dueDay && (!Number.isFinite(parsed) || parsed < 1 || parsed > 31)) setError(t("common.validDay"));
+          }}
+          error={error === t("common.validDay") ? error : undefined}
+        />
         {inFamily ? (
           <SegmentedControl
             segments={[
@@ -323,6 +389,7 @@ function AddBillModal({ visible, onClose, onSubmit }: { visible: boolean; onClos
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   content: {
     padding: 16,
     paddingBottom: 96
@@ -373,6 +440,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 24
+  },
+  editorPressable: {
+    width: "100%"
   },
   editor: {
     maxHeight: "90%",
@@ -429,6 +499,9 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16
+  },
+  formDisabled: {
+    opacity: 0.6
   },
   formLabel: {
     fontSize: 12,

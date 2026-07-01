@@ -23,10 +23,14 @@ export function AuthScreen() {
   const [localError, setLocalError] = useState<string | undefined>();
   const { login, loginDemo, register, requestPasswordReset, resetPassword, loading, authError } = useFinanceStore();
 
+  // Matches the backend's stronger rule for newly-set passwords (register/reset);
+  // login keeps the looser 8-char check so existing accounts can still sign in.
+  const isStrongPassword = (value: string) => value.length >= 10 && /[A-Za-z]/.test(value) && /[0-9]/.test(value);
+
   const canSubmit = useMemo(() => {
-    const hasCredentials = email.trim().length > 4 && password.length >= 8;
+    const hasCredentials = email.trim().length > 4 && (mode === "login" ? password.length >= 8 : isStrongPassword(password));
     if (mode === "reset") {
-      return resetStep === "email" ? email.trim().length > 4 : email.trim().length > 4 && code.trim().length >= 6 && password.length >= 8;
+      return resetStep === "email" ? email.trim().length > 4 : email.trim().length > 4 && code.trim().length >= 6 && isStrongPassword(password);
     }
     return mode === "login" ? hasCredentials : hasCredentials && name.trim().length > 1;
   }, [code, email, mode, name, password, resetStep]);
@@ -109,12 +113,13 @@ export function AuthScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                error={localError && password.length < 8 ? t("auth.invalidLogin") : undefined}
+                error={localError && (mode === "login" ? password.length < 8 : !isStrongPassword(password)) ? t("auth.invalidLogin") : undefined}
                 style={styles.passwordInput}
               />
               <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((current) => !current)}>
                 <MaterialCommunityIcons color={theme.colors.muted} name={showPassword ? "eye-off" : "eye"} size={22} />
               </TouchableOpacity>
+              {mode !== "login" ? <Text style={[styles.passwordHint, { color: theme.colors.subtleText }]}>{t("auth.passwordHint")}</Text> : null}
             </View>
             )}
 
@@ -201,6 +206,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     width: 52
+  },
+  passwordHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 6
   },
   linkButton: {
     alignSelf: "flex-start"

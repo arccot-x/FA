@@ -2,11 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { InteractionManager, Modal, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import type { RefObject } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { Button } from "../components/ui";
 import { useI18n } from "../i18n";
 import { useTheme } from "../theme";
 import { navigationRef } from "./navigation";
 import { getPref, PREF_KEYS, setPref } from "./prefs";
+import { computeTooltipTop, roundedRectPath, type TutorialRect } from "./tutorialLayout";
 
 type TutorialContextValue = {
   start: () => void;
@@ -26,11 +28,16 @@ type TutorialStep = {
   fallback: (size: { width: number; height: number }) => TutorialRect;
 };
 
-type TutorialRect = { x: number; y: number; width: number; height: number };
-
 const TutorialContext = createContext<TutorialContextValue | undefined>(undefined);
 
 const steps: TutorialStep[] = [
+  {
+    tab: "Home",
+    target: "home.hero",
+    titleKey: "tutorial.homeHeroTitle",
+    bodyKey: "tutorial.homeHeroBody",
+    fallback: ({ width }) => ({ x: 16, y: 150, width: width - 32, height: 150 })
+  },
   {
     tab: "Home",
     target: "home.quickAdd",
@@ -58,6 +65,13 @@ const steps: TutorialStep[] = [
     titleKey: "tutorial.insightsTitle",
     bodyKey: "tutorial.insightsBody",
     fallback: ({ width }) => ({ x: 16, y: 100, width: width - 32, height: 132 })
+  },
+  {
+    tab: "Analytics",
+    target: "analytics.budgets",
+    titleKey: "tutorial.budgetsTitle",
+    bodyKey: "tutorial.budgetsBody",
+    fallback: ({ width }) => ({ x: 16, y: 360, width: width - 32, height: 160 })
   },
   {
     tab: "Settings",
@@ -210,7 +224,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   };
 
   const rect = current ? measuredRect ?? current.fallback(size) : null;
-  const tooltipTop = rect ? (rect.y + rect.height + 16 < size.height - 190 ? rect.y + rect.height + 16 : Math.max(64, rect.y - 152)) : 0;
+  const tooltipTop = rect ? computeTooltipTop(rect, size, tooltipHeight) : 0;
   const tooltipBottom = tooltipTop + tooltipHeight;
   const connector =
     rect && tooltipHeight > 0
@@ -248,10 +262,13 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       {current && rect ? (
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <View style={[styles.dim, { left: 0, top: 0, right: 0, height: rect.y }]} />
-            <View style={[styles.dim, { left: 0, top: rect.y, width: rect.x, height: rect.height }]} />
-            <View style={[styles.dim, { left: rect.x + rect.width, top: rect.y, right: 0, height: rect.height }]} />
-            <View style={[styles.dim, { left: 0, top: rect.y + rect.height, right: 0, bottom: 0 }]} />
+            <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
+              <Path
+                fillRule="evenodd"
+                fill="rgba(0,0,0,0.68)"
+                d={`M0 0H${size.width}V${size.height}H0Z ${roundedRectPath(rect.x, rect.y, rect.width, rect.height, theme.radii.lg)}`}
+              />
+            </Svg>
             <View style={[styles.spotlight, { left: rect.x, top: rect.y, width: rect.width, height: rect.height, borderColor: theme.colors.accent, borderRadius: theme.radii.lg }]} />
             {connector && connector.height > 8 ? (
               <>
@@ -311,10 +328,6 @@ function navigateToStep(index: number) {
 const styles = StyleSheet.create({
   root: {
     flex: 1
-  },
-  dim: {
-    backgroundColor: "rgba(0,0,0,0.68)",
-    position: "absolute"
   },
   spotlight: {
     borderWidth: 3,

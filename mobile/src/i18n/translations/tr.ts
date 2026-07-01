@@ -22,6 +22,7 @@ export const tr: Translations = {
     validDay: "1 ile 31 arasında bir gün gir.",
     validEmail: "Geçerli bir e-posta adresi gir.",
     validUrl: "Geçerli bir URL gir.",
+    numericFieldHint: "Bir sayı gir",
     saved: "Kaydedildi.",
     uploaded: "Yüklendi.",
     deleted: "Silindi.",
@@ -52,8 +53,9 @@ export const tr: Translations = {
     loginCta: "Giriş Yap",
     createCta: "Hesap Oluştur",
     invalidLogin: "E-postanı ve en az 8 karakterli parolanı gir.",
-    invalidRegister: "Adını, e-postanı ve en az 8 karakterli parolanı gir.",
-    invalidReset: "E-postanı, sıfırlama kodunu ve en az 8 karakterli yeni parolanı gir.",
+    invalidRegister: "Adını, e-postanı ve aşağıdaki koşullara uyan bir parola gir.",
+    invalidReset: "E-postanı, sıfırlama kodunu ve aşağıdaki koşullara uyan yeni bir parola gir.",
+    passwordHint: "En az 10 karakter, bir harf ve bir rakam içermeli.",
     genericError: "Bir şeyler ters gitti. Lütfen tekrar dene."
   },
   loadingAccount: "Hesabın açılıyor",
@@ -76,14 +78,17 @@ export const tr: Translations = {
     pendingReceipt: "Bekleyen fiş",
     tapToAdd: "Detay eklemek için dokun",
     noActivity: "Henüz hareket yok. İlk harcamanı ekle.",
-    quickAdd: "Hızlı ekle"
+    quickAdd: "Hızlı ekle",
+    previousMonth: "Önceki ay",
+    nextMonth: "Sonraki ay"
   },
   sync: {
     pending: "{count} değişiklik eşitleme bekliyor",
     syncing: "Kayıtlı değişiklikler eşitleniyor...",
     refreshFailed: "Yenilenemedi. Son kaydedilen veriler gösteriliyor.",
+    retry: "Tekrar dene",
     lastSynced: "Son eşitleme {time}",
-    retry: "Tekrar dene"
+    queueAtRisk: "Bu cihaz değişikliğini daha sonra eşitlemek üzere kaydedemedi. Uygulamayı şimdi kapatırsan kaybolabilir."
   },
   income: {
     title: "Gelir",
@@ -269,6 +274,7 @@ export const tr: Translations = {
     income: "Gelir",
     expenses: "Gider",
     incomeVsExpenses: "Gelir / Gider",
+    spentPercent: "%{percent} harcandı",
     netFlow: "Net",
     categoryMix: "Kategori dağılımı",
     addExpenses: "Kategori eğilimleri için harcama ekle.",
@@ -337,6 +343,8 @@ export const tr: Translations = {
     stepCount: "{current} / {total}",
     promptTitle: "Kısa bir tur ister misin?",
     promptBody: "Kısa rehber; fiş ekleme, faturalar, Kasa, Analiz ve Ayarlar bölümlerini gösterir.",
+    homeHeroTitle: "Bakiyen",
+    homeHeroBody: "Bu kart harcayabileceğin tutarı, günlük harcama payını ve maaş gününe kalan süreyi gösterir. Geliri düzenlemek için üstteki kadran simgesine dokun.",
     homeTitle: "Hızlı ekle",
     homeBody: "Harcama, gelir, fiş fotoğrafı veya galeri görseli eklemek için buraya dokun.",
     billsTitle: "Faturalar",
@@ -345,8 +353,10 @@ export const tr: Translations = {
     vaultBody: "Önemli belgeleri kaydet ve fiş geçmişini bu alandan filtrele.",
     insightsTitle: "Analiz",
     insightsBody: "Gelir akışını, kategori dağılımını, eğilimleri, bütçeleri ve hedefleri burada incele.",
+    budgetsTitle: "Bütçeler ve hedefler",
+    budgetsBody: "Kategori başına harcama limitleri belirle ve tasarruf hedeflerini burada takip ederek bu ayki ilerlemeni gör.",
     settingsTitle: "Ayar sekmeleri",
-    settingsBody: "Genel tercihler, para ayarları, aile araçları ve hesap işlemleri arasında geçmek için bu sekmeleri kullan."
+    settingsBody: "Genel tercihler, para ayarları, aile araçları ve hesap işlemleri arasında geçmek için bu sekmeleri kullan. Abonelik yönetimi ve yardım merkezi için Hesap sekmesini aç."
   },
   category: {
     GROCERIES: "Market",
@@ -375,13 +385,19 @@ export const tr: Translations = {
   camera: {
     needAccess: "Fişler için kamera erişimi gerekli",
     allow: "Kameraya izin ver",
-    saving: "Fiş kaydediliyor..."
+    saving: "Fiş kaydediliyor...",
+    close: "Kamerayı kapat",
+    shutter: "Fotoğraf çek",
+    captureFailed: "Fotoğraf çekilemedi. Tekrar deneyin."
   },
   activity: {
     title: "Tüm hareketler",
     search: "Harcama ara",
     seeAll: "Tümünü gör",
-    none: "Eşleşen harcama yok."
+    none: "Eşleşen harcama yok.",
+    noneSearch: "\"{query}\" ile eşleşen işlem yok.",
+    noneCategory: "Henüz {category} işlemi yok.",
+    noneFilteredSearch: "\"{query}\" ile eşleşen {category} işlemi yok."
   },
   trends: {
     title: "Harcama eğilimi",
@@ -422,6 +438,7 @@ export const tr: Translations = {
     subtitle: "Paranı kişiselleştirmek için birkaç hızlı ayar.",
     incomeStep: "Aylık gelirin nedir?",
     paydayStep: "Genelde hangi gün maaş alıyorsun?",
+    paydayHint: "Maaş gününe geri sayım ve günlük harcama payının sıfırlanması için kullanılır.",
     next: "Devam",
     start: "Başla",
     useSample: "Örnek kurulum kullan"

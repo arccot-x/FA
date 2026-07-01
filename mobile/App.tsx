@@ -66,7 +66,7 @@ function MainTabs() {
     <Tabs.Navigator
       tabBarPosition="bottom"
       tabBar={(props) => <AppTabBar {...props} />}
-      screenOptions={{ swipeEnabled: true, lazy: false }}
+      screenOptions={{ swipeEnabled: false, lazy: false }}
     >
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Bills" component={BillCenterScreen} />

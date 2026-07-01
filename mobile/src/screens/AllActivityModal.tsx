@@ -72,7 +72,17 @@ export function AllActivityModal({ visible, transactions, onClose, onSelect }: A
         ItemSeparatorComponent={() => <View style={styles.sep} />}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={<Text style={[styles.empty, { color: theme.colors.subtleText }]}>{t("activity.none")}</Text>}
+        ListEmptyComponent={
+          <Text style={[styles.empty, { color: theme.colors.subtleText }]}>
+            {query.trim() && category
+              ? t("activity.noneFilteredSearch", { query: query.trim(), category: t(`category.${category}` as never) })
+              : query.trim()
+                ? t("activity.noneSearch", { query: query.trim() })
+                : category
+                  ? t("activity.noneCategory", { category: t(`category.${category}` as never) })
+                  : t("activity.none")}
+          </Text>
+        }
       />
     </ModalSheet>
   );

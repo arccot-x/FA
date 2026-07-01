@@ -21,6 +21,9 @@ type FinanceState = {
   offline: boolean;
   pendingSyncCount: number;
   syncing: boolean;
+  // True when a queued offline change could only be held in memory (the on-disk
+  // queue write failed), so it could be lost if the app closes before it syncs.
+  queueAtRisk: boolean;
   authError?: string;
   loadError?: string;
   lastSyncedAt?: string;
@@ -125,6 +128,14 @@ function markOfflineMutation(set: (state: Partial<FinanceState>) => void) {
   set({ offline: true, loading: false });
 }
 
+// Queues a mutation for later sync and surfaces `queueAtRisk` when the queue itself
+// couldn't be written to disk, so an in-memory-only change isn't lost silently if
+// the app closes before the next successful sync.
+async function enqueueAndMarkOffline(set: (state: Partial<FinanceState>) => void, item: OfflineQueueItem) {
+  const { items, persisted } = await enqueueOfflineItem(item);
+  set({ pendingSyncCount: items.length, offline: true, loading: false, queueAtRisk: !persisted });
+}
+
 function canUseHouse(family?: Family | null) {
   return Boolean(family?.subscription?.allowed);
 }
@@ -138,6 +149,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   offline: false,
   pendingSyncCount: 0,
   syncing: false,
+  queueAtRisk: false,
   selectedMonth: currentMonthKey(),
   family: undefined,
   familyInvites: [],
@@ -304,6 +316,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       offline: false,
       pendingSyncCount: 0,
       syncing: false,
+      queueAtRisk: false,
       authError: undefined,
       selectedMonth: currentMonthKey(),
       family: null,
@@ -403,6 +416,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       }
     }
 
+    // The user may have logged out (or switched accounts) while this sync was in
+    // flight; don't resurrect the queue file or overwrite state for a session that
+    // no longer exists.
+    if (get().user?.id !== user.id) return;
+
     await saveOfflineQueue(remaining);
     set({ syncing: false, pendingSyncCount: remaining.length, offline: remaining.length > 0 });
   },
@@ -430,9 +448,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.addTransaction({ userId: user.id, amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : resolvedScope, familyId });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("addTransaction", { amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : resolvedScope, familyId }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("addTransaction", { amount, category: isIncome ? undefined : category, type, scope: isIncome ? "PERSONAL" : resolvedScope, familyId }));
     }
   },
 
@@ -455,9 +471,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.updateIncomeSettings({ userId: user.id, ...input });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("saveIncomeSettings", input));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("saveIncomeSettings", input));
     }
   },
 
@@ -474,9 +488,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.saveIncomeCycle({ userId: user.id, month: get().selectedMonth, expected, actual, houseAllocation });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("saveIncomeCycle", { month: get().selectedMonth, expected, actual, houseAllocation }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("saveIncomeCycle", { month: get().selectedMonth, expected, actual, houseAllocation }));
     }
   },
 
@@ -556,9 +568,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.addBillTemplate({ userId: user.id, ...input, scope: resolvedScope, familyId });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("addBill", { ...input, scope: resolvedScope, familyId }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("addBill", { ...input, scope: resolvedScope, familyId }));
     }
   },
 
@@ -672,9 +682,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         const existingQueue = await loadOfflineQueue();
         await saveOfflineQueue(existingQueue.filter((item) => item.kind !== "uploadSnap" || item.payload.uri !== receiptUri));
       }
-      const queue = await enqueueOfflineItem(makeQueueItem("addTransaction", { amount: input.amount, category: input.category, type: "EXPENSE", scope, familyId }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("addTransaction", { amount: input.amount, category: input.category, type: "EXPENSE", scope, familyId }));
       return;
     }
     try {
@@ -691,9 +699,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("updateTransaction", { transactionId: transaction.id, amount: input.amount, category: input.category, merchant: input.merchant, notes: input.notes, scope, familyId }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("updateTransaction", { transactionId: transaction.id, amount: input.amount, category: input.category, merchant: input.merchant, notes: input.notes, scope, familyId }));
     }
   },
 
@@ -706,9 +712,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         await api.deleteTransaction({ userId: user.id, transactionId: transaction.id });
         await get().load();
       } catch {
-        const queue = await enqueueOfflineItem(makeQueueItem("deleteTransaction", { transactionId: transaction.id }));
-        set({ pendingSyncCount: queue.length });
-        markOfflineMutation(set);
+        await enqueueAndMarkOffline(set, makeQueueItem("deleteTransaction", { transactionId: transaction.id }));
       }
       return;
     }
@@ -738,9 +742,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.deleteBillTemplate({ userId: user.id, templateId: bill.billTemplate.id });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("deleteBill", { templateId: bill.billTemplate.id }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("deleteBill", { templateId: bill.billTemplate.id }));
     }
   },
 
@@ -750,7 +752,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       id: `snap-${Date.now()}`,
       amount: scan?.amount ?? null,
       category: scan?.category ?? null,
-      merchant: scan?.merchant || "Pending receipt",
+      // Leave unset when nothing was scanned yet; the UI already falls back to a
+      // localized "Pending receipt" label instead of baking in an English string here.
+      merchant: scan?.merchant || undefined,
       notes: scan?.notes,
       aiScannedAt: scan?.aiScannedAt,
       status: "PENDING_DETAILS",
@@ -764,9 +768,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.uploadSnapExpense({ userId: user.id, uri, ...scan });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("uploadSnap", { uri, ...scan }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("uploadSnap", { uri, ...scan }));
     }
   },
 
@@ -798,9 +800,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     try {
       await api.updateTransaction({ userId: user.id, transactionId: transaction.id, ...nextScan, status: "PENDING_DETAILS", aiScannedAt });
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("updateTransaction", { transactionId: transaction.id, ...nextScan, status: "PENDING_DETAILS", aiScannedAt }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("updateTransaction", { transactionId: transaction.id, ...nextScan, status: "PENDING_DETAILS", aiScannedAt }));
     }
   },
 
@@ -821,9 +821,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.uploadVaultDocument({ userId: user.id, ...input });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("addVaultDocument", input));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("addVaultDocument", input));
     }
   },
 
@@ -838,9 +836,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       await api.deleteVaultDocument({ userId: user.id, documentId: document.id });
       await get().load();
     } catch {
-      const queue = await enqueueOfflineItem(makeQueueItem("deleteVaultDocument", { documentId: document.id }));
-      set({ pendingSyncCount: queue.length });
-      markOfflineMutation(set);
+      await enqueueAndMarkOffline(set, makeQueueItem("deleteVaultDocument", { documentId: document.id }));
     }
   },
 

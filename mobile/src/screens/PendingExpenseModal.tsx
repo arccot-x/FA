@@ -116,10 +116,16 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
 
   return (
     <ModalSheet visible={transaction !== null} title={isPending ? t("pending.title") : t("transaction.editTitle")} onClose={onClose}>
-      <View style={styles.form}>
+      <View pointerEvents={saving ? "none" : "auto"} style={[styles.form, saving && styles.formDisabled]}>
         {receiptUri ? (
           <View>
-            <PressableScale scaleTo={0.98} onPress={() => setPreviewOpen(true)} style={[styles.receipt, { borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}>
+            <PressableScale
+              scaleTo={0.98}
+              onPress={() => setPreviewOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("transaction.receipt")}
+              style={[styles.receipt, { borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}
+            >
               <Image source={{ uri: receiptUri }} style={styles.receiptImage} resizeMode="cover" />
               <View style={styles.receiptBadge}>
                 <MaterialCommunityIcons color="#FFFFFF" name="magnify-plus" size={16} />
@@ -147,7 +153,17 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
         ) : null}
 
         <AiFieldLabel label={t("common.amount")} scanned={Boolean(transaction?.aiScannedAt && amount)} />
-        <Field autoFocus={isPending && !receiptUri} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} error={error === t("common.positiveAmount") ? error : undefined} />
+        <Field
+          autoFocus={isPending && !receiptUri}
+          keyboardType="decimal-pad"
+          value={amount}
+          onChangeText={setAmount}
+          onBlur={() => {
+            const parsed = Number(amount);
+            if (amount && (!Number.isFinite(parsed) || parsed <= 0)) setError(t("common.positiveAmount"));
+          }}
+          error={error === t("common.positiveAmount") ? error : undefined}
+        />
         {inFamily ? (
           <SegmentedControl
             segments={[
@@ -158,7 +174,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
             onChange={(value) => setScope(value as TransactionScope)}
           />
         ) : null}
-        <AiFieldLabel label={t("pending.merchant")} scanned={Boolean(transaction?.aiScannedAt && merchant)} />
+        <AiFieldLabel label={t("pending.merchant")} optional scanned={Boolean(transaction?.aiScannedAt && merchant)} />
         <Field value={merchant} onChangeText={setMerchant} />
         <View>
           <AiFieldLabel label={t("common.category")} scanned={Boolean(transaction?.aiScannedAt && category)} />
@@ -168,7 +184,7 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
             ))}
           </View>
         </View>
-        <AiFieldLabel label={t("pending.notes")} scanned={Boolean(transaction?.aiScannedAt && notes)} />
+        <AiFieldLabel label={t("pending.notes")} optional scanned={Boolean(transaction?.aiScannedAt && notes)} />
         <Field multiline value={notes} onChangeText={setNotes} style={styles.notes} />
         <FormMessage message={error && error !== t("common.positiveAmount") ? error : undefined} />
         <Button label={t("pending.saveExpense")} icon="check" onPress={save} loading={saving} style={styles.save} />
@@ -188,13 +204,16 @@ export function PendingExpenseModal({ transaction, onClose, onSubmit, onDelete }
   );
 }
 
-function AiFieldLabel({ label, scanned }: { label: string; scanned: boolean }) {
+function AiFieldLabel({ label, scanned, optional = false }: { label: string; scanned: boolean; optional?: boolean }) {
   const theme = useTheme();
   const { t } = useI18n();
 
   return (
     <View style={styles.labelRow}>
-      <Text style={[styles.label, { color: theme.colors.subtleText }]}>{label}</Text>
+      <Text style={[styles.label, { color: theme.colors.subtleText }]}>
+        {label}
+        {optional ? <Text style={styles.optionalLabel}> ({t("common.optional")})</Text> : null}
+      </Text>
       {scanned ? (
         <View style={[styles.aiPill, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radii.pill }]}>
           <MaterialCommunityIcons color={theme.colors.primary} name="auto-fix" size={12} />
@@ -207,12 +226,19 @@ function AiFieldLabel({ label, scanned }: { label: string; scanned: boolean }) {
 
 const styles = StyleSheet.create({
   form: { gap: 16 },
+  formDisabled: {
+    opacity: 0.6
+  },
   label: {
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.4,
     marginBottom: 8,
     textTransform: "uppercase"
+  },
+  optionalLabel: {
+    fontWeight: "600",
+    textTransform: "none"
   },
   labelRow: {
     alignItems: "center",

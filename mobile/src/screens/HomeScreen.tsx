@@ -5,7 +5,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
-import { AnimatedNumber, FormMessage, Gradient, IconButton, LoadingState, ProgressRing, PressableScale, SegmentedControl } from "../components/ui";
+import { AnimatedNumber, Button, FormMessage, Gradient, IconButton, LoadingState, ProgressRing, PressableScale, SegmentedControl } from "../components/ui";
 import { QuickAddModal } from "./QuickAddModal";
 import { IncomeEditorModal } from "./IncomeEditorModal";
 import { PendingExpenseModal } from "./PendingExpenseModal";
@@ -36,7 +36,7 @@ export function HomeScreen() {
   const [view, setView] = useState<"personal" | "house">("personal");
   const listRef = useRef<FlatList<Transaction>>(null);
 
-  const { user, load, loading, offline, loadError, lastSyncedAt, pendingSyncCount, syncing, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
+  const { user, load, loading, offline, loadError, lastSyncedAt, pendingSyncCount, syncing, queueAtRisk, incomeCycle, bills, transactions, selectedMonth, setMonth, family, house, addManualExpense, saveIncomeSettings, saveExpectedIncome, completePendingExpense, deleteTransaction, recordSnap } =
     useFinanceStore();
 
   const inFamily = !!family?.subscription?.allowed;
@@ -139,7 +139,7 @@ export function HomeScreen() {
         ListHeaderComponent={
           <View style={styles.headerArea}>
             <View style={[styles.monthRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
-              <PressableScale onPress={() => void setMonth(addMonths(selectedMonth, -1))} style={styles.monthBtn} accessibilityLabel="Previous month">
+              <PressableScale onPress={() => void setMonth(addMonths(selectedMonth, -1))} style={styles.monthBtn} accessibilityLabel={t("home.previousMonth")}>
                 <MaterialCommunityIcons color={theme.colors.text} name="chevron-left" size={24} />
               </PressableScale>
               <PressableScale style={styles.monthLabelWrap} onPress={() => !isCurrentMonth && void setMonth(thisMonth)}>
@@ -150,7 +150,7 @@ export function HomeScreen() {
                 disabled={isCurrentMonth}
                 onPress={() => void setMonth(addMonths(selectedMonth, 1))}
                 style={[styles.monthBtn, isCurrentMonth && styles.monthBtnDisabled]}
-                accessibilityLabel="Next month"
+                accessibilityLabel={t("home.nextMonth")}
               >
                 <MaterialCommunityIcons color={theme.colors.text} name="chevron-right" size={24} />
               </PressableScale>
@@ -175,6 +175,12 @@ export function HomeScreen() {
                 </Text>
               </View>
             ) : null}
+            {queueAtRisk ? (
+              <View style={[styles.syncBanner, { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger, borderRadius: theme.radii.md }]}>
+                <MaterialCommunityIcons color={theme.colors.danger} name="alert-outline" size={20} />
+                <Text style={[styles.syncText, { color: theme.colors.text }]}>{t("sync.queueAtRisk")}</Text>
+              </View>
+            ) : null}
             {offline || loadError ? (
               <View style={styles.statusStack}>
                 <FormMessage message={loadError ? t("sync.refreshFailed") : undefined} tone="info" />
@@ -183,9 +189,11 @@ export function HomeScreen() {
                     {t("sync.lastSynced", { time: new Date(lastSyncedAt).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }) })}
                   </Text>
                 ) : null}
+                {loadError ? <Button label={t("sync.retry")} icon="refresh" variant="secondary" loading={loading} onPress={() => void load()} style={styles.retryButton} /> : null}
               </View>
             ) : null}
 
+            <TutorialTarget id="home.hero">
             <Animated.View entering={FadeInDown.duration(420)}>
               <Gradient colors={theme.colors.heroGradient} borderRadius={theme.radii.xl} style={[styles.hero, theme.shadow("md")]}>
                 {houseView ? (
@@ -201,7 +209,7 @@ export function HomeScreen() {
                         {t("home.spent")}: {money(house.spent)}
                       </Text>
                     </View>
-                    <ProgressRing progress={houseUsedRatio} size={104} strokeWidth={11} color="#FFFFFF" trackColor={theme.colors.trackBg}>
+                    <ProgressRing progress={houseUsedRatio} size={80} strokeWidth={8} color="#FFFFFF" trackColor={theme.colors.trackBg}>
                       <View style={styles.ringCenter}>
                         <Text style={styles.ringPercent}>{Math.round(houseUsedRatio * 100)}%</Text>
                         <Text style={styles.ringHint}>{t("home.usedShort")}</Text>
@@ -224,7 +232,7 @@ export function HomeScreen() {
                         {summary.isPaydayToday ? t("home.paydayToday") : t("home.daysToPayday", { days: summary.daysToPayday })}
                       </Text>
                     </View>
-                    <ProgressRing progress={summary.usedRatio} size={104} strokeWidth={11} color="#FFFFFF" trackColor={theme.colors.trackBg}>
+                    <ProgressRing progress={summary.usedRatio} size={80} strokeWidth={8} color="#FFFFFF" trackColor={theme.colors.trackBg}>
                       <View style={styles.ringCenter}>
                         <Text style={styles.ringPercent}>{usedPercent}%</Text>
                         <Text style={styles.ringHint}>{t("home.usedShort")}</Text>
@@ -234,6 +242,7 @@ export function HomeScreen() {
                 )}
               </Gradient>
             </Animated.View>
+            </TutorialTarget>
 
             <Animated.View entering={FadeInDown.delay(80).duration(420)} style={styles.metrics}>
               {houseView ? (
@@ -413,15 +422,15 @@ const styles = StyleSheet.create({
   },
   heroValue: {
     color: "#FFFFFF",
-    fontSize: 40,
+    fontSize: 44,
     fontWeight: "900",
     letterSpacing: -1,
     marginTop: 4
   },
   heroSub: {
-    color: "rgba(255,255,255,0.85)",
+    color: "rgba(255,255,255,0.92)",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     marginTop: 8
   },
   ringCenter: {
@@ -430,7 +439,7 @@ const styles = StyleSheet.create({
   },
   ringPercent: {
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "900"
   },
   ringHint: {
@@ -463,6 +472,11 @@ const styles = StyleSheet.create({
   },
   statusStack: {
     gap: 6
+  },
+  retryButton: {
+    alignSelf: "flex-start",
+    minHeight: 38,
+    paddingHorizontal: 16
   },
   lastSynced: {
     fontSize: 12,

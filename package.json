@@ -15,8 +15,6 @@
     "test": "npm --workspace backend run test && npm --workspace mobile run test"
   },
   "overrides": {
-    "@types/multer": {
-      "@types/express": "4.17.25"
-    }
+    "@types/express": "4.17.25"
   }
 }

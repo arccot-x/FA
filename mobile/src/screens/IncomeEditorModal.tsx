@@ -99,8 +99,18 @@ export function IncomeEditorModal({
 
   return (
     <ModalSheet visible={visible} title={t("income.title")} onClose={onClose}>
-      <View style={styles.form}>
-        <Field label={t("income.monthlyIncome")} keyboardType="decimal-pad" value={income} onChangeText={setIncome} error={error === t("common.positiveAmount") ? error : undefined} />
+      <View pointerEvents={saving ? "none" : "auto"} style={[styles.form, saving && styles.formDisabled]}>
+        <Field
+          label={t("income.monthlyIncome")}
+          keyboardType="decimal-pad"
+          value={income}
+          onChangeText={setIncome}
+          onBlur={() => {
+            const parsed = Number(income);
+            if (income && (!Number.isFinite(parsed) || parsed <= 0)) setError(t("common.positiveAmount"));
+          }}
+          error={error === t("common.positiveAmount") ? error : undefined}
+        />
 
         <View style={styles.presets}>
           {PRESETS.map((preset) => (
@@ -108,7 +118,28 @@ export function IncomeEditorModal({
           ))}
         </View>
 
-        <Field label={t("income.payday")} keyboardType="number-pad" value={payday} onChangeText={setPayday} error={error === t("common.validDay") ? error : undefined} />
+        {/* This toggle has an outsized effect on "Safe to spend" (treats income as arrived
+            vs. still pending), so it's placed right after income instead of buried at the
+            bottom, and given an accent border to stand out from the other switches. */}
+        <View style={[styles.switchRow, styles.switchRowEmphasized, { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primary, borderRadius: theme.radii.md }]}>
+          <View style={styles.switchText}>
+            <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("income.received")}</Text>
+            <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("income.receivedHint")}</Text>
+          </View>
+          <Switch value={received} onValueChange={setReceived} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
+        </View>
+
+        <Field
+          label={t("income.payday")}
+          keyboardType="number-pad"
+          value={payday}
+          onChangeText={setPayday}
+          onBlur={() => {
+            const parsed = Number(payday);
+            if (payday && (!Number.isFinite(parsed) || parsed < 1 || parsed > 31)) setError(t("common.validDay"));
+          }}
+          error={error === t("common.validDay") ? error : undefined}
+        />
 
         <View style={[styles.switchRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
           <View style={styles.switchText}>
@@ -118,7 +149,19 @@ export function IncomeEditorModal({
           <Switch value={variable} onValueChange={setVariable} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
         </View>
 
-        {variable ? <Field label={t("income.expectedThisMonth")} keyboardType="decimal-pad" value={expected} onChangeText={setExpected} error={error === t("common.validAmount") ? error : undefined} /> : null}
+        {variable ? (
+          <Field
+            label={t("income.expectedThisMonth")}
+            keyboardType="decimal-pad"
+            value={expected}
+            onChangeText={setExpected}
+            onBlur={() => {
+              const parsed = Number(expected);
+              if (expected && (!Number.isFinite(parsed) || parsed <= 0)) setError(t("common.validAmount"));
+            }}
+            error={error === t("common.validAmount") ? error : undefined}
+          />
+        ) : null}
 
         {inFamily ? (
           <View>
@@ -126,14 +169,6 @@ export function IncomeEditorModal({
             <Text style={[styles.houseHint, { color: theme.colors.subtleText }]}>{t("income.houseAllocationHint")}</Text>
           </View>
         ) : null}
-
-        <View style={[styles.switchRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
-          <View style={styles.switchText}>
-            <Text style={[styles.switchTitle, { color: theme.colors.text }]}>{t("income.received")}</Text>
-            <Text style={[styles.switchMeta, { color: theme.colors.subtleText }]}>{t("income.receivedHint")}</Text>
-          </View>
-          <Switch value={received} onValueChange={setReceived} trackColor={{ true: theme.colors.primary, false: theme.colors.borderStrong }} thumbColor="#FFFFFF" />
-        </View>
 
         <FormMessage message={error && ![t("common.positiveAmount"), t("common.validAmount"), t("common.validDay")].includes(error) ? error : undefined} />
         <Button label={t("income.save")} icon="content-save" onPress={save} loading={saving} style={styles.saveButton} />
@@ -146,6 +181,9 @@ const styles = StyleSheet.create({
   form: {
     gap: 16
   },
+  formDisabled: {
+    opacity: 0.6
+  },
   presets: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -157,6 +195,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 16
+  },
+  switchRowEmphasized: {
+    borderWidth: 2
   },
   switchText: {
     flex: 1,

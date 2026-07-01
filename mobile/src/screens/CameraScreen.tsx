@@ -19,30 +19,36 @@ export function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [saving, setSaving] = useState(false);
   const [savingLabel, setSavingLabel] = useState("");
+  const [error, setError] = useState("");
   const recordSnap = useFinanceStore((state) => state.recordSnap);
   const userId = useFinanceStore((state) => state.user?.id);
 
   const capture = async () => {
     if (!cameraRef.current || saving) return;
     setSaving(true);
+    setError("");
     setSavingLabel(t("camera.saving"));
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.72 });
-      if (photo?.uri) {
-        if (aiEnabled && userId) {
-          try {
-            setSavingLabel(t("ai.scanning"));
-            const scan = await scanReceipt(photo.uri, userId);
-            await recordSnap(photo.uri, { amount: scan.amount, category: scan.category, merchant: scan.merchant, notes: scan.items, aiScannedAt: new Date().toISOString() });
-            navigation.goBack();
-            return;
-          } catch {
-            // Keep the capture even when AI is unavailable.
-          }
-        }
-        await recordSnap(photo.uri);
-        navigation.goBack();
+      if (!photo?.uri) {
+        setError(t("camera.captureFailed"));
+        return;
       }
+      if (aiEnabled && userId) {
+        try {
+          setSavingLabel(t("ai.scanning"));
+          const scan = await scanReceipt(photo.uri, userId);
+          await recordSnap(photo.uri, { amount: scan.amount, category: scan.category, merchant: scan.merchant, notes: scan.items, aiScannedAt: new Date().toISOString() });
+          navigation.goBack();
+          return;
+        } catch {
+          // Keep the capture even when AI is unavailable.
+        }
+      }
+      await recordSnap(photo.uri);
+      navigation.goBack();
+    } catch {
+      setError(t("camera.captureFailed"));
     } finally {
       setSavingLabel("");
       setSaving(false);
@@ -73,15 +79,23 @@ export function CameraScreen() {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
       <View style={styles.controls}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t("camera.close")} style={styles.secondaryButton} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons color="#FFFFFF" name="close" size={25} />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.shutter, { backgroundColor: theme.colors.accent }]} onPress={capture}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={t("camera.shutter")}
+          accessibilityState={{ disabled: saving }}
+          disabled={saving}
+          style={[styles.shutter, { backgroundColor: theme.colors.accent }]}
+          onPress={capture}
+        >
           {saving ? <ActivityIndicator color="#FFFFFF" /> : <MaterialCommunityIcons color="#FFFFFF" name="camera" size={34} />}
         </TouchableOpacity>
         <View style={styles.placeholder} />
       </View>
       {saving && savingLabel ? <Text style={styles.savingText}>{savingLabel}</Text> : null}
+      {!saving && error ? <Text style={[styles.savingText, styles.errorText]}>{error}</Text> : null}
     </View>
   );
 }
@@ -126,6 +140,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 24,
     textAlign: "center"
+  },
+  errorText: {
+    color: "#FF8A80"
   },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   permission: {

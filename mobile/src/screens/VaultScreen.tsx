@@ -185,7 +185,7 @@ export function VaultScreen() {
       />
 
       <ModalSheet visible={draft !== null} title={t("vault.saveDocument")} onClose={() => setDraft(null)}>
-        <View style={styles.form}>
+        <View pointerEvents={uploading ? "none" : "auto"} style={[styles.form, uploading && styles.formDisabled]}>
           <View style={[styles.selectedFile, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radii.md }]}>
             <MaterialCommunityIcons color={theme.colors.primary} name={draft?.mimeType === "application/pdf" ? "file-pdf-box" : "file-image"} size={28} />
             <View style={styles.docBody}>
@@ -195,7 +195,15 @@ export function VaultScreen() {
               <Text style={[styles.docMeta, { color: theme.colors.subtleText }]}>{draft?.mimeType ?? "Document"}</Text>
             </View>
           </View>
-          <Field label={t("vault.docTitle")} value={title} onChangeText={setTitle} error={error === t("common.requiredField") ? error : undefined} />
+          <Field
+            label={t("vault.docTitle")}
+            value={title}
+            onChangeText={setTitle}
+            onBlur={() => {
+              if (!title.trim()) setError(t("common.requiredField"));
+            }}
+            error={error === t("common.requiredField") ? error : undefined}
+          />
           <View>
             <Text style={[styles.formLabel, { color: theme.colors.subtleText }]}>{t("vault.folder")}</Text>
             <View style={styles.grid}>
@@ -318,6 +326,9 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16
+  },
+  formDisabled: {
+    opacity: 0.6
   },
   selectedFile: {
     alignItems: "center",

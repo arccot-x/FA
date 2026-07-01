@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import { Alert, Image, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -23,8 +23,9 @@ import { TutorialTarget, useTutorial } from "../utils/TutorialProvider";
 import { exportTransactionsCsv } from "../utils/exportData";
 import { CURRENCIES, toNumber } from "../utils/money";
 import type { CurrencyCode } from "../utils/money";
+import appConfig from "../../app.json";
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = appConfig.expo.version;
 type SettingsTab = "general" | "money" | "family" | "account";
 
 export function SettingsScreen() {
@@ -44,6 +45,12 @@ export function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const scrollRef = useRef<ScrollView>(null);
+
+  // Land at the top of each tab's content instead of preserving the previous
+  // tab's scroll offset, which otherwise looks like content is missing.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [activeTab]);
 
   const toggleReminders = async (next: boolean) => {
     const ok = await setRemindersEnabled(next);

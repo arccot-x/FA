@@ -64,9 +64,30 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
             <Text style={[styles.subtitle, { color: theme.colors.subtleText }]}>{t("onboarding.subtitle")}</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(100).duration(420)} style={styles.form}>
-            <Field label={t("onboarding.incomeStep")} keyboardType="decimal-pad" value={income} onChangeText={setIncome} error={error === t("common.positiveAmount") ? error : undefined} />
-            <Field label={t("onboarding.paydayStep")} keyboardType="number-pad" value={payday} onChangeText={setPayday} error={error === t("common.validDay") ? error : undefined} />
+          <Animated.View entering={FadeInDown.delay(100).duration(420)} pointerEvents={saving ? "none" : "auto"} style={[styles.form, saving && styles.formDisabled]}>
+            <Field
+              label={t("onboarding.incomeStep")}
+              keyboardType="decimal-pad"
+              value={income}
+              onChangeText={setIncome}
+              onBlur={() => {
+                const parsed = Number(income);
+                if (income && (!Number.isFinite(parsed) || parsed <= 0)) setError(t("common.positiveAmount"));
+              }}
+              error={error === t("common.positiveAmount") ? error : undefined}
+            />
+            <Field
+              label={t("onboarding.paydayStep")}
+              keyboardType="number-pad"
+              value={payday}
+              onChangeText={setPayday}
+              onBlur={() => {
+                const parsed = Number(payday);
+                if (payday && (!Number.isFinite(parsed) || parsed < 1 || parsed > 31)) setError(t("common.validDay"));
+              }}
+              error={error === t("common.validDay") ? error : undefined}
+            />
+            <Text style={[styles.paydayHint, { color: theme.colors.subtleText }]}>{t("onboarding.paydayHint")}</Text>
 
             <Text style={[styles.label, { color: theme.colors.subtleText }]}>{t("settings.currency")}</Text>
             <View style={styles.row}>
@@ -110,6 +131,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "900", textAlign: "center" },
   subtitle: { fontSize: 15, fontWeight: "600", lineHeight: 21, marginTop: 8, maxWidth: 420, textAlign: "center" },
   form: { gap: 16, maxWidth: 430, width: "100%" },
+  formDisabled: { opacity: 0.6 },
+  paydayHint: { fontSize: 12, fontWeight: "600", marginTop: -8 },
   label: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   start: { marginTop: 8 }

@@ -1,9 +1,10 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useRef } from "react";
+import type { ComponentProps } from "react";
 import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import Svg, { Path } from "react-native-svg";
 import { MetricTile } from "../components/MetricTile";
 import { Screen } from "../components/Screen";
 import { EmptyState } from "../components/ui";
@@ -67,13 +68,22 @@ export function AnalyticsScreen() {
   }, [incomeCycle, bills.unpaid, transactions, locale]);
 
   const piePalette = [theme.colors.primary, theme.colors.accent, theme.colors.info, theme.colors.warning, theme.colors.success, theme.colors.muted];
-  const pieData = Object.entries(analytics.categories).map(([name, amount], index) => ({
+  const categoryEntries = Object.entries(analytics.categories);
+  // Once there are more categories than fixed brand colors, generate evenly-spaced
+  // hues instead of cycling the palette, so no two slices ever share a color.
+  const pieColor = (index: number) =>
+    categoryEntries.length <= piePalette.length
+      ? piePalette[index % piePalette.length]
+      : `hsl(${Math.round((index * 360) / categoryEntries.length)}, ${theme.isDark ? 62 : 55}%, ${theme.isDark ? 62 : 45}%)`;
+  const pieData = categoryEntries.map(([name, amount], index) => ({
     name: t(`category.${name}` as never),
     amount,
-    color: piePalette[index % piePalette.length],
+    color: pieColor(index),
     legendFontColor: theme.colors.subtleText,
     legendFontSize: 12
   }));
+
+  const spentPercent = analytics.income > 0 ? Math.round(((analytics.expenses + analytics.billsDue) / analytics.income) * 100) : 0;
 
   const delta = analytics.lastMonthGroceries - analytics.groceries;
   const comparison =
@@ -117,14 +127,30 @@ export function AnalyticsScreen() {
             entering={FadeInDown.delay(60).duration(380)}
             style={[styles.panel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, borderRadius: theme.radii.lg, ...theme.shadow("sm") }]}
           >
-            <Text style={[styles.panelTitle, { color: theme.colors.text }]}>{t("analytics.incomeVsExpenses")}</Text>
-            <IncomeExpenseFlowChart
-              width={chartWidth}
+            <View style={styles.panelHeaderRow}>
+              <Text style={[styles.panelTitle, { color: theme.colors.text }]}>{t("analytics.incomeVsExpenses")}</Text>
+              {analytics.income > 0 ? (
+                <View style={[styles.spentBadge, { backgroundColor: spentPercent >= 100 ? theme.colors.dangerSoft : theme.colors.warningSoft, borderRadius: theme.radii.pill }]}>
+                  <Text style={[styles.spentBadgeText, { color: spentPercent >= 100 ? theme.colors.danger : theme.colors.warning }]}>
+                    {t("analytics.spentPercent", { percent: spentPercent })}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <IncomeExpenseSummary
               income={analytics.income}
               expenses={analytics.expenses}
               bills={analytics.billsDue}
               money={money}
-              labels={{ income: t("analytics.income"), expenses: t("analytics.expenses"), bills: t("analytics.bills"), remaining: t("home.available"), net: t("analytics.netFlow") }}
+              labels={{ income: t("analytics.income"), expenses: t("analytics.expenses"), bills: t("analytics.bills"), remaining: t("home.available") }}
+              theme={theme}
+            />
+            <IncomeBreakdownBar
+              income={analytics.income}
+              expenses={analytics.expenses}
+              bills={analytics.billsDue}
+              money={money}
+              labels={{ expenses: t("analytics.expenses"), bills: t("analytics.bills"), remaining: t("home.available") }}
               theme={theme}
             />
           </Animated.View>
@@ -167,9 +193,17 @@ export function AnalyticsScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(170).duration(380)}>
-          <BudgetsSection spentByCategory={analytics.categories} />
-        </Animated.View>
+        <TutorialTarget
+          id="analytics.budgets"
+          prepare={() => {
+            scrollRef.current?.scrollTo({ y: 620, animated: true });
+            return new Promise<void>((resolve) => setTimeout(resolve, 360));
+          }}
+        >
+          <Animated.View entering={FadeInDown.delay(170).duration(380)}>
+            <BudgetsSection spentByCategory={analytics.categories} />
+          </Animated.View>
+        </TutorialTarget>
 
         <Animated.View entering={FadeInDown.delay(190).duration(380)}>
           <GoalsSection />
@@ -193,8 +227,7 @@ function hexToRgba(hex: string, opacity: number) {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-function IncomeExpenseFlowChart({
-  width,
+function IncomeExpenseSummary({
   income,
   expenses,
   bills,
@@ -202,68 +235,85 @@ function IncomeExpenseFlowChart({
   labels,
   theme
 }: {
-  width: number;
   income: number;
   expenses: number;
   bills: number;
   money: (value: number) => string;
-  labels: { income: string; expenses: string; bills: string; remaining: string; net: string };
+  labels: { income: string; expenses: string; bills: string; remaining: string };
   theme: ReturnType<typeof useTheme>;
 }) {
-  const totalOut = expenses + bills;
-  const remaining = Math.max(income - totalOut, 0);
-  const maxAmount = Math.max(income, expenses, bills, remaining, 1);
-  const flowWidth = (amount: number) => Math.max(4, Math.min(18, 4 + (amount / maxAmount) * 14));
-  const sideNodeWidth = 96;
-  const centerNodeWidth = 102;
-  const rightLeft = width - sideNodeWidth;
-  const centerLeft = (width - centerNodeWidth) / 2;
+  const remaining = Math.max(income - expenses - bills, 0);
+  const cards: { label: string; value: number; color: string; soft: string; icon: ComponentProps<typeof MaterialCommunityIcons>["name"] }[] = [
+    { label: labels.income, value: income, color: theme.colors.primary, soft: theme.colors.primarySoft, icon: "cash-multiple" },
+    { label: labels.expenses, value: expenses, color: theme.colors.accent, soft: theme.colors.accentSoft, icon: "trending-down" },
+    { label: labels.bills, value: bills, color: theme.colors.warning, soft: theme.colors.warningSoft, icon: "calendar-clock" },
+    { label: labels.remaining, value: remaining, color: theme.colors.success, soft: theme.colors.successSoft, icon: "piggy-bank-outline" }
+  ];
 
   return (
-    <View style={[styles.flowChart, { width }]}>
-      <Svg width={width} height={218} style={StyleSheet.absoluteFill} viewBox={`0 0 ${width} 218`}>
-        <Path d={`M 88 62 C ${width * 0.32} 62 ${width * 0.38} 104 ${centerLeft} 109`} stroke={theme.colors.primary} strokeWidth={flowWidth(income)} strokeLinecap="round" fill="none" opacity={0.92} />
-        <Path d={`M ${centerLeft + centerNodeWidth} 108 C ${width * 0.68} 108 ${width * 0.72} 64 ${rightLeft} 62`} stroke={theme.colors.accent} strokeWidth={flowWidth(expenses)} strokeLinecap="round" fill="none" opacity={0.9} />
-        <Path d={`M ${centerLeft + centerNodeWidth} 116 C ${width * 0.68} 116 ${width * 0.72} 156 ${rightLeft} 156`} stroke={theme.colors.warning} strokeWidth={flowWidth(bills)} strokeLinecap="round" fill="none" opacity={0.88} />
-        <Path d={`M ${centerLeft + 56} 142 C ${width * 0.48} 176 ${width * 0.25} 178 92 172`} stroke={theme.colors.success} strokeWidth={flowWidth(remaining)} strokeLinecap="round" fill="none" opacity={remaining > 0 ? 0.82 : 0.24} />
-      </Svg>
-
-      <FlowNode label={labels.income} value={money(income)} top={28} left={0} color={theme.colors.primary} softColor={theme.colors.primarySoft} theme={theme} />
-      <FlowNode label={labels.remaining} value={money(remaining)} top={138} left={0} color={theme.colors.success} softColor={theme.colors.successSoft} theme={theme} />
-      <FlowNode label={labels.net} value={money(Math.max(income - totalOut, 0))} top={82} left={centerLeft} color={theme.colors.info} softColor={theme.colors.surfaceAlt} theme={theme} compact />
-      <FlowNode label={labels.expenses} value={money(expenses)} top={28} left={rightLeft} color={theme.colors.accent} softColor={theme.colors.accentSoft} theme={theme} />
-      <FlowNode label={labels.bills} value={money(bills)} top={138} left={rightLeft} color={theme.colors.warning} softColor={theme.colors.warningSoft} theme={theme} />
+    <View style={styles.summaryGrid}>
+      {cards.map((card) => (
+        <View key={card.label} style={[styles.summaryCard, { backgroundColor: card.soft, borderColor: card.color, borderRadius: theme.radii.md }]}>
+          <View style={styles.summaryHeaderRow}>
+            <MaterialCommunityIcons color={card.color} name={card.icon} size={16} />
+            <Text style={[styles.summaryLabel, { color: card.color }]} numberOfLines={1}>
+              {card.label}
+            </Text>
+          </View>
+          <Text style={[styles.summaryValue, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            {money(card.value)}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
 
-function FlowNode({
-  label,
-  value,
-  top,
-  left,
-  color,
-  softColor,
-  theme,
-  compact = false
+function IncomeBreakdownBar({
+  income,
+  expenses,
+  bills,
+  money,
+  labels,
+  theme
 }: {
-  label: string;
-  value: string;
-  top: number;
-  left: number;
-  color: string;
-  softColor: string;
+  income: number;
+  expenses: number;
+  bills: number;
+  money: (value: number) => string;
+  labels: { expenses: string; bills: string; remaining: string };
   theme: ReturnType<typeof useTheme>;
-  compact?: boolean;
 }) {
+  const remaining = Math.max(income - expenses - bills, 0);
+  const total = Math.max(income, expenses + bills + remaining, 1);
+  const segments = [
+    { key: "expenses", label: labels.expenses, value: expenses, color: theme.colors.accent },
+    { key: "bills", label: labels.bills, value: bills, color: theme.colors.warning },
+    { key: "remaining", label: labels.remaining, value: remaining, color: theme.colors.success }
+  ].filter((segment) => segment.value > 0);
+
+  if (segments.length === 0) return null;
+
   return (
-    <View style={[styles.flowNode, compact ? styles.flowNodeCenter : null, { top, left, backgroundColor: softColor, borderColor: color, borderRadius: theme.radii.md }]}>
-      <Text style={[styles.flowLabel, { color }]} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={[styles.flowValue, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
+    <View style={styles.breakdown}>
+      <View style={[styles.breakdownTrack, { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radii.pill }]}>
+        {segments.map((segment) => (
+          <View key={segment.key} style={{ flex: segment.value / total, backgroundColor: segment.color }} />
+        ))}
+      </View>
+      <View style={styles.breakdownLegend}>
+        {segments.map((segment) => (
+          <View key={segment.key} style={styles.breakdownLegendItem}>
+            <View style={[styles.breakdownDot, { backgroundColor: segment.color }]} />
+            <Text style={[styles.breakdownLegendLabel, { color: theme.colors.subtleText }]} numberOfLines={1}>
+              {segment.label}
+            </Text>
+            <Text style={[styles.breakdownLegendValue, { color: theme.colors.text }]} numberOfLines={1}>
+              {money(segment.value)}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -283,10 +333,56 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     padding: 16
   },
+  panelHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8
+  },
   panelTitle: {
     fontSize: 17,
-    fontWeight: "800",
-    marginBottom: 8
+    fontWeight: "800"
+  },
+  spentBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4
+  },
+  spentBadgeText: {
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  breakdown: {
+    marginTop: 6
+  },
+  breakdownTrack: {
+    flexDirection: "row",
+    height: 10,
+    overflow: "hidden",
+    width: "100%"
+  },
+  breakdownLegend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+    marginTop: 12
+  },
+  breakdownLegendItem: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6
+  },
+  breakdownDot: {
+    borderRadius: 999,
+    height: 8,
+    width: 8
+  },
+  breakdownLegendLabel: {
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  breakdownLegendValue: {
+    fontSize: 12,
+    fontWeight: "900"
   },
   chart: {
     borderRadius: 12,
@@ -296,34 +392,32 @@ const styles = StyleSheet.create({
     marginLeft: -8,
     overflow: "visible"
   },
-  flowChart: {
-    height: 218,
-    marginTop: 2,
-    overflow: "visible"
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
   },
-  flowNode: {
+  summaryCard: {
     borderWidth: 1,
-    minHeight: 62,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    position: "absolute",
-    width: 96
+    flexBasis: "47%",
+    flexGrow: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10
   },
-  flowNodeCenter: {
+  summaryHeaderRow: {
     alignItems: "center",
-    minHeight: 70,
-    justifyContent: "center",
-    width: 102
+    flexDirection: "row",
+    gap: 6
   },
-  flowLabel: {
+  summaryLabel: {
     fontSize: 11,
     fontWeight: "900",
     textTransform: "uppercase"
   },
-  flowValue: {
-    fontSize: 14,
+  summaryValue: {
+    fontSize: 16,
     fontWeight: "900",
-    marginTop: 5
+    marginTop: 6
   },
   insight: {
     borderWidth: 1,

@@ -1,4 +1,4 @@
-import { API_URL, DEMO_USER_EMAIL } from "../config";
+import { API_URL } from "../config";
 import type { BootstrapPayload, ExpenseCategory, Family, FamilyInvite, HouseData, SubscriptionInfo, SubscriptionPlanId, Transaction, TransactionScope, TransactionType, User, VaultCategory, VaultDocument } from "../types";
 import { currentMonthKey } from "../utils/money";
 
@@ -79,25 +79,8 @@ export async function getCurrentAccount() {
   return request<{ user: User }>("/auth/me");
 }
 
-export async function getDemoUser() {
-  return request<{ id: string }>(`/users/demo`);
-}
-
 export async function bootstrap(userId: string, month = currentMonthKey()) {
   return request<BootstrapPayload>(`/bootstrap/${userId}?month=${month}`);
-}
-
-export async function createDemoUser() {
-  return request<{ id: string }>("/users", {
-    method: "POST",
-    body: JSON.stringify({
-      email: DEMO_USER_EMAIL,
-      name: "Demo User",
-      defaultMonthlyIncome: 4200,
-      paydayDay: 1,
-      variableIncomeEnabled: true
-    })
-  });
 }
 
 export async function addTransaction(input: {

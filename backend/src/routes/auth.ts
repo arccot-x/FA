@@ -11,10 +11,19 @@ import { dueDateFor, monthStart } from "../utils/month";
 
 export const authRouter = Router();
 
+// Applied to newly-set passwords (register, reset, change). Login keeps the looser
+// `z.string().min(8)` check below so existing accounts with 8-char passwords can
+// still sign in; this only raises the bar for passwords going forward.
+const strongPassword = z
+  .string()
+  .min(10, "Password must be at least 10 characters.")
+  .regex(/[A-Za-z]/, "Password must include at least one letter.")
+  .regex(/[0-9]/, "Password must include at least one number.");
+
 const changePasswordSchema = z.object({
   userId: z.string().min(1),
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(8)
+  newPassword: strongPassword
 });
 
 const credentialsSchema = z.object({
@@ -22,7 +31,9 @@ const credentialsSchema = z.object({
   password: z.string().min(8)
 });
 
-const registerSchema = credentialsSchema.extend({
+const registerSchema = z.object({
+  email: z.string().email().transform((value) => value.toLowerCase().trim()),
+  password: strongPassword,
   name: z.string().min(1).max(80)
 });
 
@@ -32,7 +43,7 @@ const requestResetSchema = z.object({
 
 const resetPasswordSchema = requestResetSchema.extend({
   code: z.string().min(6).max(12).transform((value) => value.trim()),
-  newPassword: z.string().min(8)
+  newPassword: strongPassword
 });
 
 function hashResetCode(code: string) {
@@ -242,7 +253,12 @@ authRouter.post(
   "/reset-password",
   asyncHandler(async (req, res) => {
     const input = resetPasswordSchema.parse(req.body);
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: input.email } });
+    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    if (!user) {
+      // Same message as an invalid/expired code so this endpoint can't be used to
+      // check which emails have an account.
+      throw new Error("Reset code is invalid or expired.");
+    }
     const reset = await prisma.passwordResetToken.findFirst({
       where: {
         userId: user.id,

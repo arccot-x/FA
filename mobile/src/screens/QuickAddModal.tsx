@@ -134,14 +134,17 @@ export function QuickAddModal({ visible, onClose, onCamera, onAttachImage, onSub
         ) : null}
 
         {!isIncome ? (
-          <View style={styles.categoryGrid}>
-            {quickCategories.map((item) => (
-              <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
-            ))}
+          <View pointerEvents={saving ? "none" : "auto"}>
+            <Text style={[styles.sectionLabel, { color: theme.colors.subtleText }]}>{t("common.category")}</Text>
+            <View style={styles.categoryGrid}>
+              {quickCategories.map((item) => (
+                <Chip key={item.value} icon={item.icon} label={t(`category.${item.value}` as never)} selected={item.value === category} onPress={() => setCategory(item.value)} />
+              ))}
+            </View>
           </View>
         ) : null}
 
-        <View style={styles.keypad}>
+        <View pointerEvents={saving ? "none" : "auto"} style={[styles.keypad, saving && styles.keypadDisabled]}>
           {KEYS.map((key) => (
             <PressableScale
               key={key}
@@ -194,6 +197,13 @@ const styles = StyleSheet.create({
   scopeRow: {
     marginBottom: 12
   },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    marginBottom: 8,
+    textTransform: "uppercase"
+  },
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -207,6 +217,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 16,
     minHeight: 220
+  },
+  keypadDisabled: {
+    opacity: 0.6
   },
   key: {
     alignItems: "center",

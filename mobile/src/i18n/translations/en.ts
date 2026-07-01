@@ -20,6 +20,7 @@ export const en = {
     validDay: "Enter a day from 1 to 31.",
     validEmail: "Enter a valid email address.",
     validUrl: "Enter a valid URL.",
+    numericFieldHint: "Enter a number",
     saved: "Saved.",
     uploaded: "Uploaded.",
     deleted: "Deleted.",
@@ -50,8 +51,9 @@ export const en = {
     loginCta: "Login",
     createCta: "Create Account",
     invalidLogin: "Enter your email and at least 8 password characters.",
-    invalidRegister: "Enter your name, email and at least 8 password characters.",
-    invalidReset: "Enter your email, reset code and a new password with at least 8 characters.",
+    invalidRegister: "Enter your name, email and a password that meets the requirements below.",
+    invalidReset: "Enter your email, reset code and a new password that meets the requirements below.",
+    passwordHint: "At least 10 characters, with a letter and a number.",
     genericError: "Something went wrong. Please try again."
   },
   loadingAccount: "Opening your account",
@@ -74,14 +76,17 @@ export const en = {
     pendingReceipt: "Pending receipt",
     tapToAdd: "Tap to add details",
     noActivity: "No activity yet. Add your first expense.",
-    quickAdd: "Quick add"
+    quickAdd: "Quick add",
+    previousMonth: "Previous month",
+    nextMonth: "Next month"
   },
   sync: {
     pending: "{count} change(s) waiting to sync",
     syncing: "Syncing saved changes...",
     refreshFailed: "Could not refresh. Showing the latest saved data.",
+    retry: "Retry",
     lastSynced: "Last synced {time}",
-    retry: "Retry"
+    queueAtRisk: "This device couldn't save your change for later syncing. It may be lost if you close the app now."
   },
   income: {
     title: "Income",
@@ -267,6 +272,7 @@ export const en = {
     income: "Income",
     expenses: "Expenses",
     incomeVsExpenses: "Income vs expenses",
+    spentPercent: "{percent}% spent",
     netFlow: "Net",
     categoryMix: "Category mix",
     addExpenses: "Add expenses to see category trends.",
@@ -335,6 +341,8 @@ export const en = {
     stepCount: "{current} of {total}",
     promptTitle: "Want a quick tour?",
     promptBody: "A short guided walkthrough can show where to add receipts, manage bills, use Vault, read Insights and adjust Settings.",
+    homeHeroTitle: "Your balance",
+    homeHeroBody: "This card shows what's safe to spend, your daily allowance and how many days until payday. Tap the dial icon above to edit your income.",
     homeTitle: "Quick add",
     homeBody: "Tap here to add an expense, income, receipt photo or gallery image.",
     billsTitle: "Bills",
@@ -343,8 +351,10 @@ export const en = {
     vaultBody: "Save important documents and filter receipt history from this area.",
     insightsTitle: "Insights",
     insightsBody: "Review income flow, category mix, trends, budgets and goals here.",
+    budgetsTitle: "Budgets & goals",
+    budgetsBody: "Set spending limits per category and track savings goals here to see how you're pacing this month.",
     settingsTitle: "Settings tabs",
-    settingsBody: "Use these tabs to jump between general preferences, money settings, family tools and account actions."
+    settingsBody: "Use these tabs to jump between general preferences, money settings, family tools and account actions. Open the Account tab for subscription management and the help center."
   },
   category: {
     GROCERIES: "Groceries",
@@ -373,13 +383,19 @@ export const en = {
   camera: {
     needAccess: "Camera access is needed for receipts",
     allow: "Allow camera",
-    saving: "Saving receipt..."
+    saving: "Saving receipt...",
+    close: "Close camera",
+    shutter: "Take photo",
+    captureFailed: "Could not take the photo. Try again."
   },
   activity: {
     title: "All activity",
     search: "Search transactions",
     seeAll: "See all",
-    none: "No matching transactions."
+    none: "No matching transactions.",
+    noneSearch: "No transactions match \"{query}\".",
+    noneCategory: "No {category} transactions yet.",
+    noneFilteredSearch: "No {category} transactions match \"{query}\"."
   },
   trends: {
     title: "Spending trend",
@@ -420,6 +436,7 @@ export const en = {
     subtitle: "A couple of quick settings to personalise your money.",
     incomeStep: "What's your monthly income?",
     paydayStep: "Which day are you usually paid?",
+    paydayHint: "Used to count down to payday and reset your daily spending allowance.",
     next: "Continue",
     start: "Get started",
     useSample: "Use sample setup"

@@ -10,9 +10,12 @@ type FieldProps = TextInputProps & {
   containerStyle?: object;
 };
 
-export const Field = forwardRef<TextInput, FieldProps>(({ label, error, containerStyle, style, ...rest }, ref) => {
+const numericKeyboards = new Set(["decimal-pad", "numeric", "number-pad"]);
+
+export const Field = forwardRef<TextInput, FieldProps>(({ label, error, containerStyle, style, accessibilityLabel, accessibilityHint, ...rest }, ref) => {
   const theme = useTheme();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
+  const numericHint = rest.keyboardType && numericKeyboards.has(rest.keyboardType) ? t("common.numericFieldHint") : undefined;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -22,6 +25,8 @@ export const Field = forwardRef<TextInput, FieldProps>(({ label, error, containe
       <TextInput
         ref={ref}
         placeholderTextColor={theme.colors.muted}
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityHint={accessibilityHint ?? numericHint}
         style={[
           styles.input,
           {

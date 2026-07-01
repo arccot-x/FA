@@ -69,20 +69,24 @@ export async function loadOfflineQueue(): Promise<OfflineQueueItem[]> {
   }
 }
 
-export async function saveOfflineQueue(items: OfflineQueueItem[]): Promise<void> {
-  if (!dir) return;
+// Returns whether the write actually landed on disk. Callers use this to warn the
+// user when a change is only held in memory and could be lost if the app closes
+// before the next successful sync (e.g. device storage full or unavailable).
+export async function saveOfflineQueue(items: OfflineQueueItem[]): Promise<boolean> {
+  if (!dir) return false;
   try {
     await FileSystem.writeAsStringAsync(queueFile, JSON.stringify(compactQueue(items)));
+    return true;
   } catch {
-    // Queue persistence is best-effort; optimistic UI still keeps the user moving.
+    return false;
   }
 }
 
-export async function enqueueOfflineItem(item: OfflineQueueItem): Promise<OfflineQueueItem[]> {
+export async function enqueueOfflineItem(item: OfflineQueueItem): Promise<{ items: OfflineQueueItem[]; persisted: boolean }> {
   const items = await loadOfflineQueue();
   const next = compactQueue([...items, item]);
-  await saveOfflineQueue(next);
-  return next;
+  const persisted = await saveOfflineQueue(next);
+  return { items: next, persisted };
 }
 
 export async function clearOfflineQueue(): Promise<void> {

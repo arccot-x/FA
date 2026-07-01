@@ -14,14 +14,6 @@ type UsersDataSource = {
   };
 };
 
-const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  defaultMonthlyIncome: z.number().nonnegative().default(0),
-  paydayDay: z.number().int().min(1).max(31).default(1),
-  variableIncomeEnabled: z.boolean().default(false)
-});
-
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(80),
   email: z.string().email().transform((value) => value.toLowerCase().trim()),
@@ -32,25 +24,6 @@ const updateProfileSchema = z.object({
 
 export function createUsersRouter(data: UsersDataSource = prisma) {
   const router = Router();
-
-  router.post(
-    "/",
-    asyncHandler(async (req, res) => {
-      const input = createUserSchema.parse(req.body);
-      const user = await data.user.upsert({
-        where: { email: input.email },
-        update: {
-          name: input.name,
-          defaultMonthlyIncome: input.defaultMonthlyIncome,
-          paydayDay: input.paydayDay,
-          variableIncomeEnabled: input.variableIncomeEnabled
-        },
-        create: input
-      });
-
-      res.status(201).json(publicUser(user));
-    })
-  );
 
   router.delete(
     "/:userId",
@@ -79,25 +52,6 @@ export function createUsersRouter(data: UsersDataSource = prisma) {
         }
         throw error;
       }
-
-      res.json(publicUser(user));
-    })
-  );
-
-  router.get(
-    "/demo",
-    asyncHandler(async (_req, res) => {
-      const user = await data.user.upsert({
-        where: { email: "demo@frictionless.finance" },
-        update: {},
-        create: {
-          email: "demo@frictionless.finance",
-          name: "Demo User",
-          defaultMonthlyIncome: 4200,
-          paydayDay: 1,
-          variableIncomeEnabled: true
-        }
-      });
 
       res.json(publicUser(user));
     })

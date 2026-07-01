@@ -179,7 +179,12 @@ familiesRouter.delete(
       throw new Error("The owner cannot leave. Delete the family instead.");
     }
 
-    await prisma.familyMember.deleteMany({ where: { familyId: family.id, userId: target } });
+    const membership = await prisma.familyMember.findFirst({ where: { familyId: family.id, userId: target } });
+    if (!membership) {
+      throw new Error("Family member not found.");
+    }
+
+    await prisma.familyMember.delete({ where: { id: membership.id } });
     res.status(204).send();
   })
 );

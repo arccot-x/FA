@@ -22,6 +22,7 @@ export const ar: Translations = {
     validDay: "أدخل يوماً من 1 إلى 31.",
     validEmail: "أدخل بريداً إلكترونياً صحيحاً.",
     validUrl: "أدخل رابطاً صحيحاً.",
+    numericFieldHint: "أدخل رقماً",
     saved: "تم الحفظ.",
     uploaded: "تم الرفع.",
     deleted: "تم الحذف.",
@@ -52,8 +53,9 @@ export const ar: Translations = {
     loginCta: "تسجيل الدخول",
     createCta: "إنشاء حساب",
     invalidLogin: "أدخل بريدك وكلمة مرور من 8 أحرف على الأقل.",
-    invalidRegister: "أدخل اسمك وبريدك وكلمة مرور من 8 أحرف على الأقل.",
-    invalidReset: "أدخل بريدك ورمز إعادة التعيين وكلمة مرور جديدة من 8 أحرف على الأقل.",
+    invalidRegister: "أدخل اسمك وبريدك وكلمة مرور تطابق الشروط أدناه.",
+    invalidReset: "أدخل بريدك ورمز إعادة التعيين وكلمة مرور جديدة تطابق الشروط أدناه.",
+    passwordHint: "10 أحرف على الأقل، تتضمن حرفاً ورقماً.",
     genericError: "حدث خطأ ما. حاول مرة أخرى."
   },
   loadingAccount: "جارٍ فتح حسابك",
@@ -76,14 +78,17 @@ export const ar: Translations = {
     pendingReceipt: "إيصال معلق",
     tapToAdd: "اضغط لإضافة التفاصيل",
     noActivity: "لا توجد حركات بعد. أضف أول مصروف.",
-    quickAdd: "إضافة سريعة"
+    quickAdd: "إضافة سريعة",
+    previousMonth: "الشهر السابق",
+    nextMonth: "الشهر التالي"
   },
   sync: {
     pending: "{count} تغيير بانتظار المزامنة",
     syncing: "تتم مزامنة التغييرات المحفوظة...",
     refreshFailed: "تعذر التحديث. يتم عرض آخر بيانات محفوظة.",
+    retry: "إعادة المحاولة",
     lastSynced: "آخر مزامنة {time}",
-    retry: "إعادة المحاولة"
+    queueAtRisk: "تعذر حفظ تغييرك على هذا الجهاز لمزامنته لاحقاً. قد يُفقد إذا أغلقت التطبيق الآن."
   },
   income: {
     title: "الدخل",
@@ -269,6 +274,7 @@ export const ar: Translations = {
     income: "الدخل",
     expenses: "المصروفات",
     incomeVsExpenses: "الدخل مقابل المصروف",
+    spentPercent: "{percent}% تم إنفاقها",
     netFlow: "الصافي",
     categoryMix: "توزيع الفئات",
     addExpenses: "أضف مصروفات لعرض اتجاهات الفئات.",
@@ -337,6 +343,8 @@ export const ar: Translations = {
     stepCount: "{current} / {total}",
     promptTitle: "هل تريد جولة سريعة؟",
     promptBody: "جولة قصيرة توضّح إضافة الإيصالات والفواتير والخزنة والتحليلات والإعدادات.",
+    homeHeroTitle: "رصيدك",
+    homeHeroBody: "توضّح هذه البطاقة المبلغ الآمن للإنفاق ومصروفك اليومي وعدد الأيام المتبقية حتى الراتب. اضغط أيقونة الضبط بالأعلى لتعديل الدخل.",
     homeTitle: "إضافة سريعة",
     homeBody: "اضغط هنا لإضافة مصروف أو دخل أو صورة إيصال أو صورة من المعرض.",
     billsTitle: "الفواتير",
@@ -345,8 +353,10 @@ export const ar: Translations = {
     vaultBody: "احفظ المستندات المهمة وصفِّ سجل الإيصالات من هذه المنطقة.",
     insightsTitle: "التحليلات",
     insightsBody: "راجع تدفق الدخل وتوزيع الفئات والاتجاهات والميزانيات والأهداف هنا.",
+    budgetsTitle: "الميزانيات والأهداف",
+    budgetsBody: "حدّد حدود إنفاق لكل فئة وتابع أهداف الادخار هنا لمعرفة تقدمك خلال هذا الشهر.",
     settingsTitle: "تبويبات الإعدادات",
-    settingsBody: "استخدم هذه التبويبات للتنقل بين التفضيلات العامة وإعدادات المال وأدوات العائلة وإجراءات الحساب."
+    settingsBody: "استخدم هذه التبويبات للتنقل بين التفضيلات العامة وإعدادات المال وأدوات العائلة وإجراءات الحساب. افتح تبويب الحساب لإدارة الاشتراك ومركز المساعدة."
   },
   category: {
     GROCERIES: "بقالة",
@@ -375,13 +385,19 @@ export const ar: Translations = {
   camera: {
     needAccess: "الوصول إلى الكاميرا مطلوب للإيصالات",
     allow: "السماح للكاميرا",
-    saving: "جارٍ حفظ الإيصال..."
+    saving: "جارٍ حفظ الإيصال...",
+    close: "إغلاق الكاميرا",
+    shutter: "التقاط صورة",
+    captureFailed: "تعذر التقاط الصورة. حاول مرة أخرى."
   },
   activity: {
     title: "كل الحركات",
     search: "ابحث في المصروفات",
     seeAll: "عرض الكل",
-    none: "لا توجد مصروفات مطابقة."
+    none: "لا توجد مصروفات مطابقة.",
+    noneSearch: "لا توجد معاملات تطابق \"{query}\".",
+    noneCategory: "لا توجد معاملات {category} بعد.",
+    noneFilteredSearch: "لا توجد معاملات {category} تطابق \"{query}\"."
   },
   trends: {
     title: "اتجاه الإنفاق",
@@ -422,6 +438,7 @@ export const ar: Translations = {
     subtitle: "إعدادات سريعة لتخصيص أموالك.",
     incomeStep: "ما هو دخلك الشهري؟",
     paydayStep: "في أي يوم تتقاضى راتبك عادةً؟",
+    paydayHint: "يُستخدم للعد التنازلي حتى يوم الراتب ولإعادة ضبط مصروفك اليومي.",
     next: "متابعة",
     start: "ابدأ",
     useSample: "استخدام إعدادات نموذجية"
